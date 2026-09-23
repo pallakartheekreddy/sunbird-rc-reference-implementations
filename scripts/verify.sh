@@ -349,38 +349,33 @@ gone "Animo's release identity is not carried" 'git ls-files -z $W | xargs -0 gr
 check "building the wallet is a script, not a runbook" '[ -x scripts/build-wallet.sh ]'
 check "the importer is re-runnable for the next upstream bump" '[ -x scripts/vendor-wallet.sh ]'
 
-# The wallet's trust entries are build-time constants compiled into an APK, so a
-# re-bootstrap mints a new verifier DID and the installed wallet silently reverts
-# to "Organization not verified" with nothing in any log to say why. That failure
-# is invisible until someone points a phone at a QR, on camera.
+# The wallet's showcase trust entries are supplied at BUILD TIME and must not be pinned in
+# committed source. They carry the deployment's host and a uuid that changes on every
+# re-bootstrap, so pinning them did two kinds of damage: it put a sandbox address into a
+# public repository, and it went stale invisibly — the prefix lookup falls through to the
+# host-scoped entry, the party is still named, and only the logo is wrong. That is how an
+# 18+ roundel reached a farmer's crop-credit consent screen.
+#
+# These checks assert the ABSENCE of deployment detail, which is the inverse of what they
+# checked before the trust list moved to configuration.
 C="$W/apps/wallet/src/constants.ts"
-# Env first, deploy/.env second — the same override the e2e suite takes, so this
-# can be pointed at the deployment the APK was actually built for rather than
-# only at whatever stack this checkout last bootstrapped.
-# Each falls back INDEPENDENTLY. The earlier `[ -z "$VDID$PURL" ]` meant setting
-# only PUBLIC_URL suppressed the fallback for both, so the DID check failed with
-# "the wallet pins THIS deployment's verifier DID" when the real cause was an
-# unset variable — a failure message pointing at the wrong thing entirely.
-VDID="${VERIFIER_DID:-}"; PURL="${PUBLIC_URL:-}"
-if [ -f deploy/.env ]; then
-  [ -n "$VDID" ] || VDID="$(grep '^VERIFIER_DID=' deploy/.env | cut -d= -f2-)"
-  [ -n "$PURL" ] || PURL="$(grep '^PUBLIC_URL=' deploy/.env | cut -d= -f2-)"
+check "no IP address is pinned in the wallet's trust list" \
+  '! grep -qE "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" "$C"'
+check "the wallet takes its showcase trust from configuration" \
+  'grep -q "showcaseDeployment" "$C" && grep -q "SHOWCASE_DEPLOYMENT" "$W/apps/wallet/app.config.js"'
+
+# And, when this checkout knows which deployment it describes, that the host is absent too.
+# A hostname is not an IP and would slip past the check above.
+PURL="${PUBLIC_URL:-}"
+if [ -z "$PURL" ] && [ -f deploy/.env ]; then
+  PURL="$(grep '^PUBLIC_URL=' deploy/.env | cut -d= -f2-)"
 fi
 if [ -n "$PURL" ]; then
-  # The host the wallet was built for, taken from the logo URLs, which only this
-  # repository serves. A local .env legitimately describes a different deployment
-  # from the one the installed APK targets, and comparing the two then reports a
-  # failure that says nothing about the code - so compare only when they agree.
-  WHOST="$(grep -oE 'https://[^/]+/assets/logos/' "$C" | head -1 | sed -E 's|https://||; s|/assets/logos/||')"
   EHOST="$(printf '%s' "$PURL" | sed -E 's|^https?://||; s|/.*$||')"
-  if [ -n "$WHOST" ] && [ "$WHOST" = "$EHOST" ]; then
-    check "the wallet pins THIS deployment's verifier DID" 'test -n "$VDID" && grep -q "$VDID" "$C"'
-    check "the wallet pins THIS deployment's issuer origin" 'grep -q "$PURL" "$C"'
-  else
-    skip "wallet trust pinning" "the wallet is built for ${WHOST:-an unknown host}; this deploy/.env describes ${EHOST:-nothing}"
-  fi
+  check "this deployment's host is not pinned in the wallet's trust list" \
+    '! grep -q "$EHOST" "$C"'
 else
-  skip "wallet trust pinning" "no PUBLIC_URL in the environment or deploy/.env"
+  skip "wallet host absence" "no PUBLIC_URL in the environment or deploy/.env"
 fi
 
 # Drift: when the fork is still around, every vendored blob must match it apart

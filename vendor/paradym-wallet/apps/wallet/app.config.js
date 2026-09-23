@@ -50,6 +50,26 @@ const config = createBaseConfig({
       .split(',')
       .map((url) => url.trim())
       .filter(Boolean),
+    // The showcase deployment this build trusts, as JSON:
+    //
+    //   {"baseUrl":"https://host","verifierDids":{"age":"did:web:...","bank":"did:web:..."}}
+    //
+    // Deployment-specific values are supplied at BUILD TIME rather than pinned in
+    // src/constants.ts, because those DIDs carry the deployment's host and a uuid that
+    // changes on every re-bootstrap. Pinning them put a sandbox address into a public
+    // repository and went stale invisibly. Absent or unparseable yields no entries, which
+    // is correct for a build not pointed at a showcase.
+    showcaseDeployment: (() => {
+      const raw = process.env.SHOWCASE_DEPLOYMENT
+      if (!raw) return null
+      try {
+        return JSON.parse(raw)
+      } catch (error) {
+        // Failing loudly: a typo here silently produces a wallet that trusts nothing and
+        // names no organisation, which looks like a deployment fault rather than a build one.
+        throw new Error(`SHOWCASE_DEPLOYMENT is not valid JSON: ${error.message}`)
+      }
+    })(),
   },
 })
 

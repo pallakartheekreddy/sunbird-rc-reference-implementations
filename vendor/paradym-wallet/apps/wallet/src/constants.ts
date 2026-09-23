@@ -182,6 +182,107 @@ SSEvZdjQ1YFEB9fdwof5kkokEEz2qw==
   },
 ] satisfies Array<TrustedX509Entity>
 
+/**
+ * The Sunbird RC showcase relying parties, built from configuration rather than pinned here.
+ *
+ * These DIDs are minted per deployment: they contain the deployment's HOST and a uuid that
+ * changes on every re-bootstrap. Pinning them in committed source put a sandbox address
+ * into a public repository and made the list go stale on each re-provision — and a stale
+ * pin is not visibly broken, because the prefix lookup falls through to the host-scoped
+ * entry and the party is still named, just with the wrong logo. That is how an 18+ badge
+ * reached a farmer's crop-credit consent screen.
+ *
+ * So the deployment supplies its own base url and verifier DIDs at BUILD TIME, exactly as
+ * `credentialIssuerUrls` already does, and this file carries no host at all.
+ *
+ *   SHOWCASE_DEPLOYMENT='{"baseUrl":"https://host","verifierDids":{"bank":"did:web:..."}}'
+ *
+ * Absent configuration yields no entries, which is the right default for a build that is
+ * not pointed at a showcase deployment.
+ */
+const showcaseDeployment = (ExpoConstants.expoConfig?.extra?.showcaseDeployment ?? null) as
+  | { baseUrl?: string; verifierDids?: Record<string, string> }
+  | null
+
+// Party identity is stable across deployments; only the host and the uuid move. ORDER IS
+// LOAD-BEARING: `packages/sdk/src/trust/handlers/did.ts` resolves with
+// `find((e) => baseDid.startsWith(e.did))`, a prefix match taking the first hit, so every
+// exact DID must precede the host-scoped fallback — which is a prefix of all of them.
+const SHOWCASE_PARTIES = [
+  { key: 'age', name: 'Age Check', logo: 'age-check.png', path: '/verifier/' },
+  { key: 'bank', name: 'Gramin Bank', logo: 'gramin-bank.png', path: '/bank/' },
+  { key: 'university', name: 'University Admissions', logo: 'state-university.png', path: '/admissions/' },
+  { key: 'employer', name: 'Employer', logo: 'employer.png', path: '/employer/' },
+] as const
+
+function showcaseEntities(): TrustedDidEntity[] {
+  const base = showcaseDeployment?.baseUrl?.replace(/\/+$/, '')
+  if (!base) return []
+  const host = base.replace(/^https?:\/\//, '')
+  const entities: TrustedDidEntity[] = []
+
+  for (const party of SHOWCASE_PARTIES) {
+    const did = showcaseDeployment?.verifierDids?.[party.key]
+    // A party with no DID configured is skipped rather than guessed at. Naming an
+    // organisation the wallet cannot actually match is worse than not naming it.
+    if (!did) continue
+    entities.push({
+      entityId: did,
+      did,
+      logoUri: `${base}/assets/logos/${party.logo}`,
+      name: party.name,
+      url: `${base}${party.path}`,
+      demo: true,
+    })
+  }
+
+  // Host-scoped, and LAST. It names the DEPLOYMENT, not a party — two verifiers sign from
+  // this host — and exists only so a re-provisioned demo reads as a known deployment
+  // rather than "Organization not verified". Its mark must stay neutral: when it carried
+  // the Age demo's roundel, every party whose exact pin had gone stale borrowed it.
+  entities.push({
+    entityId: `did:web:${host}`,
+    did: `did:web:${host}`,
+    logoUri: `${base}/assets/logos/showcase-deployment.png`,
+    name: 'Sunbird RC showcase (demo deployment)',
+    url: `${base}/verifier/`,
+    demo: true,
+  })
+  return entities
+}
+
+// The showcase CREDENTIAL ISSUERS, one per registry, each published under its own stable
+// path by its own oid4vc-service instance. Path-scoped rather than DID-scoped on purpose:
+// the paths survive a re-bootstrap, the minted DIDs do not.
+//
+// ORDER IS LOAD-BEARING here too. Matching is `issuer.startsWith(e.issuer)` taking the
+// first hit, so every path-scoped entry must precede the host-scoped Age entry — which is
+// a prefix of all of them. Without that, a farmer collecting a land credential would be
+// told the National Identity Authority was offering it.
+const SHOWCASE_ISSUERS = [
+  { path: '/farmer', name: 'Farmer Registry', logo: 'farmer-registry.png' },
+  { path: '/land', name: 'Land Registry', logo: 'land-registry.png' },
+  { path: '/school', name: 'State School Board', logo: 'state-school-board.png' },
+  { path: '/college', name: 'Regional Polytechnic College', logo: 'polytechnic-college.png' },
+  { path: '/university', name: 'State University', logo: 'state-university.png' },
+  // Host-scoped, and LAST. The Age issuer's metadata is unsigned, so it resolves through
+  // the fallback mechanism, which matches on an issuer prefix.
+  { path: '', name: 'National Identity Authority', logo: 'national-identity-authority.png' },
+] as const
+
+function showcaseIssuerEntities(): TrustedOpenId4VciEntity[] {
+  const base = showcaseDeployment?.baseUrl?.replace(/\/+$/, '')
+  if (!base) return []
+  return SHOWCASE_ISSUERS.map((issuer) => ({
+    entityId: `${base}${issuer.path}`,
+    issuer: `${base}${issuer.path}`,
+    logoUri: `${base}/assets/logos/${issuer.logo}`,
+    name: issuer.name,
+    url: `${base}${issuer.path}`,
+    demo: true,
+  }))
+}
+
 export const trustedDidEntities = [
   {
     entityId: 'did:web:metadata.dev.paradym.id:41708c95-743b-48d1-b4d5-23547f67e192',
@@ -207,78 +308,7 @@ export const trustedDidEntities = [
     url: 'https://legoland.animo.id',
     demo: true,
   },
-  // Sunbird RC Age showcase — the age-restricted service that asks for `ageOver18`
-  // (`services/verifier-web` and the `Age Check` mobile app share one verifier DID).
-  //
-  // Two entries on purpose. The first pins the DID minted by the current
-  // deployment, which is what makes the wallet show a recognised organisation:
-  // the trust badge is only `positive` when a trusted entity's `entityId` equals
-  // the full client id, fragment and uuid included. The second is a host-scoped
-  // fallback, so re-provisioning the demo — which mints a new uuid — still names
-  // the organisation instead of reverting to "Organization not verified", without
-  // needing a wallet rebuild. Order matters: the lookup takes the first match.
-  {
-    entityId: 'did:web:135.235.192.9.sslip.io:dae56d5f-3b42-437c-9c72-675d7b4e006d',
-    did: 'did:web:135.235.192.9.sslip.io:dae56d5f-3b42-437c-9c72-675d7b4e006d',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/age-check.png',
-    name: 'Age Check',
-    url: 'https://135.235.192.9.sslip.io/verifier/',
-    demo: true,
-  },
-  // The BANK, a different party from the age-restricted service and therefore a
-  // different DID. Before the host-scoped fallback below: matching is a prefix
-  // match resolved by the first hit, so a fallback listed above this would claim
-  // the bank and a farmer applying for crop credit would be asked to trust
-  // "Age Check" — which is exactly the defect this entry and the separate
-  // BANK_VERIFIER_DID exist to fix.
-  {
-    entityId: 'did:web:135.235.192.9.sslip.io:bec7ef08-3914-4260-a7a5-195426258c82',
-    did: 'did:web:135.235.192.9.sslip.io:bec7ef08-3914-4260-a7a5-195426258c82',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/gramin-bank.png',
-    name: 'Gramin Bank',
-    url: 'https://135.235.192.9.sslip.io/bank/',
-    demo: true,
-  },
-  // The two Education relying parties (Iteration 03), and they must sit here —
-  // ABOVE the host-scoped fallback below and beside the bank, for the same
-  // reason the bank's entry does. `packages/sdk/src/trust/handlers/did.ts`
-  // resolves with `trustedDidEntities.find((e) => baseDid.startsWith(e.did))`,
-  // a PREFIX match taking the first hit, so the host-scoped entry is a prefix of
-  // every did:web minted on this host and would claim both of these.
-  //
-  // Education is the first iteration where a holder presents to two different
-  // relying parties in one sitting, so a wrong name here is visible in the demo
-  // itself: the employer's consent screen would read "University Admissions".
-  {
-    entityId: 'did:web:135.235.192.9.sslip.io:4f877f7a-512a-420f-80ba-1b919b976ed9',
-    did: 'did:web:135.235.192.9.sslip.io:4f877f7a-512a-420f-80ba-1b919b976ed9',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/state-university.png',
-    name: 'University Admissions',
-    url: 'https://135.235.192.9.sslip.io/admissions/',
-    demo: true,
-  },
-  {
-    entityId: 'did:web:135.235.192.9.sslip.io:78d557eb-607b-4e67-ab84-50c76ac33093',
-    did: 'did:web:135.235.192.9.sslip.io:78d557eb-607b-4e67-ab84-50c76ac33093',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/employer.png',
-    name: 'Employer',
-    url: 'https://135.235.192.9.sslip.io/employer/',
-    demo: true,
-  },
-  {
-    entityId: 'did:web:135.235.192.9.sslip.io',
-    did: 'did:web:135.235.192.9.sslip.io',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/age-check.png',
-    // Names the DEPLOYMENT, not a party. Two verifiers now sign from this host —
-    // the age-restricted service and the bank — so a party name here would be
-    // wrong for one of them, and it was: this entry read 'Age Check' and would
-    // have claimed the bank's re-minted DID after any re-bootstrap. The exact
-    // entries above are what name a party; this only keeps a re-provisioned
-    // deployment from reading "Organization not verified".
-    name: 'Sunbird RC showcase (demo deployment)',
-    url: 'https://135.235.192.9.sslip.io/verifier/',
-    demo: true,
-  },
+  ...showcaseEntities(),
 ] satisfies Array<TrustedDidEntity>
 
 export const trustedOpenId4VciIssuerEntities = [
@@ -324,79 +354,7 @@ export const trustedOpenId4VciIssuerEntities = [
   },
   // Sunbird RC Agriculture showcase — the two registries a farmer's wallet lists.
   //
-  // These MUST come before the Age entry below. Matching is
-  // `issuer.startsWith(e.issuer)` and the first match wins, so the host-scoped
-  // Age entry would otherwise claim both of these — a farmer would be told the
-  // National Identity Authority was offering them a land credential. More
-  // specific prefixes first is the rule; the paths make them specific.
-  //
-  // Each registry is its own credential issuer, published under its own path by
-  // its own oid4vc-service instance, and each advertises only the credential it
-  // authored. Path-scoped rather than DID-scoped, which is what makes these
-  // entries survive a re-bootstrap: the paths are stable, the minted DIDs are not.
-  {
-    entityId: 'https://135.235.192.9.sslip.io/farmer',
-    issuer: 'https://135.235.192.9.sslip.io/farmer',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/farmer-registry.png',
-    name: 'Farmer Registry',
-    url: 'https://135.235.192.9.sslip.io/farmer',
-    demo: true,
-  },
-  {
-    entityId: 'https://135.235.192.9.sslip.io/land',
-    issuer: 'https://135.235.192.9.sslip.io/land',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/land-registry.png',
-    name: 'Land Registry',
-    url: 'https://135.235.192.9.sslip.io/land',
-    demo: true,
-  },
-  // Sunbird RC Education showcase — the three institutions a learner's wallet
-  // lists. Before the host-scoped Age entry below, for exactly the reason the two
-  // Agriculture registries are: matching is `issuer.startsWith(e.issuer)` resolved
-  // by the FIRST hit, so a host-scoped entry above these would claim all three and
-  // a learner collecting a degree would be told the National Identity Authority
-  // issued it.
-  //
-  // Three separate credential issuers, three separate oid4vc-service instances,
-  // three separate signing DIDs — the separation the correlation check depends on.
-  // Path-scoped, so the entries survive a re-bootstrap: the paths are stable, the
-  // minted DIDs are not.
-  {
-    entityId: 'https://135.235.192.9.sslip.io/school',
-    issuer: 'https://135.235.192.9.sslip.io/school',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/state-school-board.png',
-    name: 'State School Board',
-    url: 'https://135.235.192.9.sslip.io/school',
-    demo: true,
-  },
-  {
-    entityId: 'https://135.235.192.9.sslip.io/college',
-    issuer: 'https://135.235.192.9.sslip.io/college',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/polytechnic-college.png',
-    name: 'Regional Polytechnic College',
-    url: 'https://135.235.192.9.sslip.io/college',
-    demo: true,
-  },
-  {
-    entityId: 'https://135.235.192.9.sslip.io/university',
-    issuer: 'https://135.235.192.9.sslip.io/university',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/state-university.png',
-    name: 'State University',
-    url: 'https://135.235.192.9.sslip.io/university',
-    demo: true,
-  },
-  // Sunbird RC Age showcase — the Age credential issuer. Its issuer metadata is
-  // unsigned, so this runs through the fallback ('none') mechanism, which matches
-  // on an issuer prefix. Host-scoped is therefore both sufficient and stable
-  // across re-provisioning.
-  {
-    entityId: 'https://135.235.192.9.sslip.io',
-    issuer: 'https://135.235.192.9.sslip.io',
-    logoUri: 'https://135.235.192.9.sslip.io/assets/logos/national-identity-authority.png',
-    name: 'National Identity Authority',
-    url: 'https://135.235.192.9.sslip.io',
-    demo: true,
-  },
+  ...showcaseIssuerEntities(),
 ] satisfies Array<TrustedOpenId4VciEntity>
 
 // https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/blob/main/docs/annexes/annex-3/annex-3.01-pid-rulebook.md#221-eu-wide-attestation-type-and-namespace-for-pid

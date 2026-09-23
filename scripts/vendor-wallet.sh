@@ -26,7 +26,7 @@ cd "$ROOT"
 SRC="${WALLET_FORK_PATH:-$ROOT/../paradym-wallet}"
 PREFIX="vendor/paradym-wallet"
 BASE="2d68168863dd8e78f883b752f420dc46aa2d7108"   # animo/paradym-wallet main
-TIP="82b1def"                                     # fork tip on branch v1.0.3
+TIP="f9bdb83"                                     # fork tip on branch v1.0.3
 UPSTREAM_REPO="https://github.com/animo/paradym-wallet"
 FORK_REPO="pallakartheekreddy/paradym-wallet"
 

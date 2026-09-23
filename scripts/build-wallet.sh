@@ -64,10 +64,36 @@ fi
 [ -x "$ANDROID_HOME/platform-tools/adb" ] || die "no platform-tools under $ANDROID_HOME"
 
 # Empty hides the issuer directory entirely — the screen the demo opens on.
+ISSUER_FROM="--issuer"
 if [ -z "$ISSUER" ] && [ -f deploy/.env ]; then
   ISSUER="$(grep '^PUBLIC_URL=' deploy/.env | cut -d= -f2- || true)"
+  ISSUER_FROM="deploy/.env PUBLIC_URL on THIS machine"
 fi
 [ -n "$ISSUER" ] || die "no issuer URL: pass --issuer, or run scripts/bootstrap.sh so deploy/.env has PUBLIC_URL"
+
+# A LOOPBACK issuer cannot be reached from a phone, and nothing downstream says so: the
+# build succeeds, the APK installs, and the issuer directory is simply empty because every
+# metadata fetch failed. Building for a remote deployment on a machine that also runs a
+# local stack takes that fallback silently, which is exactly how a wallet got shipped to a
+# device pointing at http://localhost.
+case "$ISSUER" in
+  *localhost*|*127.0.0.1*|*0.0.0.0*|*'[::1]'*)
+    die "the issuer url is a loopback address, taken from $ISSUER_FROM:
+    $ISSUER
+  A phone cannot reach it, so the issuer directory would be empty on the device with
+  no error anywhere. Pass the deployment's url instead, one base per issuer:
+    ./scripts/build-wallet.sh --issuer 'https://host/farmer,https://host/land'" ;;
+esac
+
+# Each entry is fetched at <url>/.well-known/openid-credential-issuer, so a deployment
+# serving several issuers needs one base PER ISSUER, not just its host. PUBLIC_URL alone
+# reaches only whichever issuer is mounted at the root.
+case "$ISSUER" in
+  *,*) : ;;
+  *) printf '  note: one issuer base only (%s). A multi-issuer deployment needs a
+        comma-separated list, e.g. https://host/farmer,https://host/land
+' "$ISSUER" >&2 ;;
+esac
 
 export JAVA_HOME ANDROID_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
@@ -76,6 +102,42 @@ export PATH="$JAVA_HOME/bin:$PATH"
 # and the build fails in javac with "package does not exist".
 export APP_VARIANT=preview
 export CREDENTIAL_ISSUER_URLS="$ISSUER"
+
+# The showcase deployment this build trusts, assembled from deploy/.env rather than pinned
+# in the wallet's source. Those DIDs carry the deployment's host and a uuid that changes on
+# every re-bootstrap; committing them put a sandbox address in a public repository and went
+# stale silently, which is how an 18+ badge reached a crop-credit consent screen.
+#
+# Override wholesale with SHOWCASE_DEPLOYMENT='{"baseUrl":...}' when building against a
+# deployment whose .env is not on this machine.
+if [ -z "${SHOWCASE_DEPLOYMENT:-}" ] && [ -f deploy/.env ]; then
+  SHOWCASE_DEPLOYMENT="$(python3 - <<'PYEOF'
+import json, re, pathlib
+env = {}
+for line in pathlib.Path("deploy/.env").read_text().splitlines():
+    m = re.match(r"^([A-Z0-9_]+)=(.*)$", line)
+    if m:
+        env[m.group(1)] = m.group(2).strip().strip('"').strip("'")
+base = env.get("PUBLIC_URL", "").rstrip("/")
+dids = {k: env.get(v) for k, v in (
+    ("age", "VERIFIER_DID"),
+    ("bank", "BANK_VERIFIER_DID"),
+    ("university", "UNIVERSITY_VERIFIER_DID"),
+    ("employer", "EMPLOYER_VERIFIER_DID"),
+) if env.get(v)}
+print(json.dumps({"baseUrl": base, "verifierDids": dids}) if base else "")
+PYEOF
+)"
+fi
+export SHOWCASE_DEPLOYMENT="${SHOWCASE_DEPLOYMENT:-}"
+if [ -n "$SHOWCASE_DEPLOYMENT" ]; then
+  # Names and the base url only. The DIDs are long and say nothing useful on a terminal.
+  printf '  showcase  %s (%s verifier DIDs)\n' \
+    "$(printf '%s' "$SHOWCASE_DEPLOYMENT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["baseUrl"])')" \
+    "$(printf '%s' "$SHOWCASE_DEPLOYMENT" | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("verifierDids",{})))')" >&2
+else
+  printf '  showcase  none configured — the wallet will name no showcase organisation\n' >&2
+fi
 # Falls back to the app scheme, which needs no App Link verification — the right
 # choice against a demo host whose assetlinks.json cannot list a locally signed
 # certificate.
