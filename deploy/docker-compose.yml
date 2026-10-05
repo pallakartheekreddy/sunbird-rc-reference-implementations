@@ -664,6 +664,26 @@ services:
       REDIS_URL: redis://redis:6379
       SESSION_STORE: redis
       ISSUER_DID: ${SCHOOL_ISSUER_DID:-}
+      # --- Authority Service as the claim source -------------------------------
+      # The same pattern Agriculture uses, and for the same reason: the approved
+      # Authority-managed record is the source of the claims, not this registry. Empty
+      # by default, so a bare `docker compose up` still works with no Authority at all.
+      # Written to deploy/.env by scripts/bootstrap-education-authority.sh; the profile
+      # ids are minted per deployment and cannot be committed.
+      #
+      # Each issuer is given ONLY its own profile map and its own client credentials, so
+      # one Education issuer cannot be made to produce the other's credential.
+      #
+      # Authentication is CLIENT CREDENTIALS rather than a static token: a token in an
+      # environment variable cannot outlive its own expiry, so issuance would stop some
+      # minutes after deployment with a 401 that reads like a permissions fault.
+      CLAIM_SOURCE_DEFAULT: '${EDU_CLAIM_SOURCE:-registry}'
+      AUTHORITY_BASE_URL: '${AUTHORITY_BASE_URL:-}'
+      AUTHORITY_SUBJECT_FIELD: '${AUTHORITY_SUBJECT_FIELD:-nationalId}'
+      AUTHORITY_TOKEN_URL: '${AUTHORITY_TOKEN_URL:-}'
+      AUTHORITY_PROFILE_MAP: '${AUTHORITY_PROFILE_MAP_SCHOOL:-}'
+      AUTHORITY_CLIENT_ID: '${AUTHORITY_CLIENT_SCHOOL_OFFICER:-}'
+      AUTHORITY_CLIENT_SECRET: '${AUTHORITY_SECRET_SCHOOL_OFFICER:-}'
       ADVERTISE_OWN_CREDENTIALS_ONLY: 'true'
       DRAFT13_COMPAT_MODE: 'false'
       ENABLE_AUTH: 'false'
@@ -708,6 +728,26 @@ services:
       REDIS_URL: redis://redis:6379
       SESSION_STORE: redis
       ISSUER_DID: ${COLLEGE_ISSUER_DID:-}
+      # --- Authority Service as the claim source -------------------------------
+      # The same pattern Agriculture uses, and for the same reason: the approved
+      # Authority-managed record is the source of the claims, not this registry. Empty
+      # by default, so a bare `docker compose up` still works with no Authority at all.
+      # Written to deploy/.env by scripts/bootstrap-education-authority.sh; the profile
+      # ids are minted per deployment and cannot be committed.
+      #
+      # Each issuer is given ONLY its own profile map and its own client credentials, so
+      # one Education issuer cannot be made to produce the other's credential.
+      #
+      # Authentication is CLIENT CREDENTIALS rather than a static token: a token in an
+      # environment variable cannot outlive its own expiry, so issuance would stop some
+      # minutes after deployment with a 401 that reads like a permissions fault.
+      CLAIM_SOURCE_DEFAULT: '${EDU_CLAIM_SOURCE:-registry}'
+      AUTHORITY_BASE_URL: '${AUTHORITY_BASE_URL:-}'
+      AUTHORITY_SUBJECT_FIELD: '${AUTHORITY_SUBJECT_FIELD:-nationalId}'
+      AUTHORITY_TOKEN_URL: '${AUTHORITY_TOKEN_URL:-}'
+      AUTHORITY_PROFILE_MAP: '${AUTHORITY_PROFILE_MAP_COLLEGE:-}'
+      AUTHORITY_CLIENT_ID: '${AUTHORITY_CLIENT_COLLEGE_OFFICER:-}'
+      AUTHORITY_CLIENT_SECRET: '${AUTHORITY_SECRET_COLLEGE_OFFICER:-}'
       ADVERTISE_OWN_CREDENTIALS_ONLY: 'true'
       DRAFT13_COMPAT_MODE: 'false'
       ENABLE_AUTH: 'false'
