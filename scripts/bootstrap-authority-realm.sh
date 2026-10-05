@@ -38,6 +38,10 @@ agri-farmer-operator   FARMER_OPERATOR
 agri-land-operator     LAND_OPERATOR
 agri-farmer-officer    FARMER_OFFICER
 agri-land-officer      LAND_OFFICER
+edu-school-operator    SCHOOL_OPERATOR
+edu-college-operator   COLLEGE_OPERATOR
+edu-school-officer     SCHOOL_OFFICER
+edu-college-officer    COLLEGE_OFFICER
 "
 
 envval() {

@@ -7,16 +7,13 @@
   "resetPasswordAllowed": false,
   "loginWithEmailAllowed": false,
   "editUsernameAllowed": false,
-
   "attributes": {
     "frontendUrl": "http://keycloak:8080/auth"
   },
-
   "accessTokenLifespan": 60,
   "accessTokenLifespanForImplicitFlow": 60,
   "ssoSessionIdleTimeout": 600,
   "ssoSessionMaxLifespan": 3600,
-
   "clients": [
     {
       "clientId": "authority-bootstrap",
@@ -77,6 +74,50 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false
+    },
+    {
+      "clientId": "edu-school-operator",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "secret": ""
+    },
+    {
+      "clientId": "edu-college-operator",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "secret": ""
+    },
+    {
+      "clientId": "edu-school-officer",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "secret": ""
+    },
+    {
+      "clientId": "edu-college-officer",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "secret": ""
     }
   ]
 }
