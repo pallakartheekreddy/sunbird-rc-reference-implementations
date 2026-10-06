@@ -164,6 +164,8 @@ say "3. Identities (did:web, so standards wallets can resolve them)"
 # so this is what a reusable DID has to match.
 PUBLIC_DID_HOST="$(printf '%s' "${PUBLIC#*://}" | cut -d/ -f1 | cut -d: -f1)"
 
+REUSE_PROBE_VC='{"@context":["https://www.w3.org/2018/credentials/v1"],"type":["VerifiableCredential"],"issuer":"did:example:probe","issuanceDate":"2020-01-01T00:00:00Z","credentialSubject":{"id":"did:example:probe"}}'
+
 mint_did() {
   local env_key="$1" label="$2" existing resp did
   existing="$(envval "$env_key")"
@@ -176,11 +178,29 @@ mint_did() {
     warn "$label: $existing was minted under another host; minting under $PUBLIC_DID_HOST" >&2
     existing=""
   fi
+  # Reuse means "this DID can still SIGN", which is not what /did/resolve
+  # answers: the DID document comes out of identity-service's database, while
+  # the private key lives in Vault. Vault here is `server -dev`, whose storage
+  # is in-memory, so a Vault restart drops every key and the kv/ mount while
+  # the database keeps all of the DIDs. Resolution then still succeeds, the DID
+  # is reused, and nothing fails until issuance -- as "Error signing the
+  # document", which names neither Vault nor the key. Found with 1584 DIDs in
+  # the database and one key in Vault, every issuer on the stack silently dead.
+  # So prove the key by using it. A failure here is not fatal: it means the DID
+  # is spent, and the mint below replaces it.
+  # The payload must be an expandable JSON-LD credential: identity-service signs
+  # with Ed25519Signature2020 under jsonld safe mode, so a bare string fails
+  # canonicalisation and would make EVERY did look spent.
   if [ -n "$existing" ] && [ "${existing#did:}" != "$existing" ] \
-     && curl -fksS -o /dev/null --max-time 5 "$BASE/did/resolve/$existing" 2>/dev/null; then
+     && curl -fksS -o /dev/null --max-time 10 -X POST "$BASE/utils/sign" \
+          -H 'content-type: application/json' \
+          -d "{\"DID\":\"$existing\",\"payload\":$REUSE_PROBE_VC}" 2>/dev/null; then
     green "$label: reusing $existing" >&2
     printf '%s' "$existing"
     return 0
+  fi
+  if [ -n "$existing" ] && [ "${existing#did:}" != "$existing" ]; then
+    warn "$label: $existing resolves but can no longer sign (Vault lost its key); minting a replacement" >&2
   fi
   resp="$(curl -fsS -X POST "$BASE/did/generate" -H 'content-type: application/json' \
     -d "{\"content\":[{\"alsoKnownAs\":[\"$label\"],\"method\":\"web\",\"services\":[]}]}")" \
@@ -260,6 +280,7 @@ VCT="$PUBLIC/vct/$VCT_SLUG"
 # inside a function body and fails with an unhelpful "unexpected EOF".
 SCHEMA_PY="$(mktemp -t agevcschema.XXXXXX)"
 FIND_PY="$(mktemp -t agevcfind.XXXXXX)"
+STALE_PY="$(mktemp -t agevcstale.XXXXXX)"
 trap 'rm -f "$SCHEMA_PY" "$FIND_PY"' EXIT
 
 cat > "$SCHEMA_PY" <<'SPEC'
@@ -321,6 +342,40 @@ for c in json.load(sys.stdin):
         break
 PY
 
+# Every PUBLISHED schema sharing this name but authored by a DIFFERENT did.
+cat > "$STALE_PY" <<'PY'
+import json, sys
+want_name, keep_author = sys.argv[1], sys.argv[2]
+for c in json.load(sys.stdin):
+    if c.get("name") == want_name and c.get("author") != keep_author:
+        print("%s|%s|%s" % (c.get("schemaId", ""), c.get("version", "1.0.0"), c.get("author", "")))
+PY
+
+# A schema is matched by (name, author), so re-minting an issuer DID makes
+# create_schema miss the old entry and publish a SECOND schema with the same
+# name -- and the stale one, authored by a DID whose key Vault no longer holds,
+# sorts FIRST in /credential-schema/oid4vci-configs. Anything resolving by name
+# or vct then picks the dead one, and issuance fails at signing with "Error
+# signing SD-JWT", four services away from the cause. Deprecating is the
+# service's own mechanism for this, and is reversible with
+# PUT /credential-schema/publish/{id}/{ver}.
+deprecate_stale_schemas() {
+  local name="$1" keep_author="$2" stale sid ver author
+  stale="$(curl -fsS "$BASE/credential-schema/oid4vci-configs" \
+    | python3 "$STALE_PY" "$name" "$keep_author" 2>/dev/null)" || return 0
+  [ -n "$stale" ] || return 0
+  while IFS='|' read -r sid ver author; do
+    [ -n "$sid" ] || continue
+    if curl -fsS -X PUT "$BASE/credential-schema/deprecate/$sid/$ver" -o /dev/null 2>/dev/null; then
+      warn "$name: deprecated a stale copy authored by ${author##*:}"
+    else
+      warn "$name: could NOT deprecate the stale copy authored by ${author##*:}"
+    fi
+  done <<EOF
+$stale
+EOF
+}
+
 # create_schema <spec-json>. The spec carries name, id, author, vct, tags,
 # description, properties and required - see SCHEMA_PY above.
 create_schema() {
@@ -330,6 +385,7 @@ create_schema() {
   existing="$(curl -fsS "$BASE/credential-schema/oid4vci-configs" | python3 "$FIND_PY" "$name" "$author")"
   if [ -n "$existing" ]; then
     green "$name (author ${author##*:}) already present"
+    deprecate_stale_schemas "$name" "$author"
     return 0
   fi
   body="$(python3 "$SCHEMA_PY" "$spec")"
