@@ -235,13 +235,23 @@ if [ ! -f "$COLLEGE_PULL" ]; then
 elif [ ! -f "$COLLEGE_SOURCE" ]; then
   die "no MIS export at $COLLEGE_SOURCE (set COLLEGE_SOURCE)"
 else
-  command -v node >/dev/null || die "node is required to run the pull adapter"
+  # The adapter is the one piece of this that is not bash, and a deployment host is not
+  # obliged to carry a Node runtime just to run a seed. NODE lets it be supplied instead of
+  # installed -- for example `docker run` against an image already on the host -- so the
+  # sandbox needs no new packages. Paths are passed through unchanged, so a container form
+  # must mount the deployment at the same path it has on the host.
+  NODE="${NODE:-node}"
+  if [ "$NODE" = node ]; then
+    command -v node >/dev/null || die "node is required to run the pull adapter.
+  Install it, or set NODE to a command that provides one, e.g.
+    NODE='docker run --rm --network host -v \$PWD:\$PWD -w \$PWD <image-with-node> node'"
+  fi
   # The adapter writes through the Authority as the College OPERATOR. With authentication on
   # it needs a bearer token; authority_token mints one for the same principal the memberships
   # name, so the pull is attributable to an operator rather than to a shared admin.
   COLLEGE_TOKEN=""
   [ "$(authority_mode)" = token ] && COLLEGE_TOKEN="$(authority_token COLLEGE_OPERATOR)"
-  node "$COLLEGE_PULL" \
+  $NODE "$COLLEGE_PULL" \
     --base "$API" \
     --binding "$BIND_COLLEGE" \
     --source "$COLLEGE_SOURCE" \
