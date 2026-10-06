@@ -86,8 +86,7 @@
           "maximum": 100,
           "description": "Percentage, 0 through 100, at most two decimal places. Compared against a threshold with integer arithmetic (services/verifier/src/domains/education/percentage.mjs) so that a boundary is exact: 60 must pass a >=60 rule and 59.99 must not, regardless of how the value survives JSON. A value with finer precision than the schema permits is a MALFORMED claim, not a business answer. The Master's rule requires >=60 here; the job rule requires only that the diploma was completed."
         }
-      },
-      "additionalProperties": false
+      }
     }
   }
 }
