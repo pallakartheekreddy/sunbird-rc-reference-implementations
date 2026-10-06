@@ -265,8 +265,14 @@ button:focus-visible {
      works against a phone camera on a backlit LCD, and asking someone to
      remember a toggle mid-demo is how a take gets lost. Scales on the viewport's
      short edge so it stays square-ish on a laptop and cannot overflow a phone. */
-  width: min(90vw, 78vh);
-  max-width: 100%;
+  /* Fill whatever column this sits in, bounded by the viewport's height so it
+     stays square-ish. In the split layout that column is about half the window,
+     which is NOT enough module pitch for a phone camera -- that is what
+     `body.qr-large` below exists to fix, and why it has to collapse the split
+     rather than just hide some text. */
+  width: 100%;
+  max-width: min(92vw, 82vh);
+  align-self: center;
   padding: 1rem;
   border-radius: var(--radius-inner);
   background: #fff;
@@ -651,8 +657,35 @@ footer strong {
 /* Cross-device scanning only. The QR grows to the viewport so each module is as
    large as the screen allows, and everything competing with it gets out of the
    way. A phone camera decodes module pitch, not page design. */
+/* The split layout arrived after this mode did, and silently defeated it: the QR
+   sits in the right-hand column, so "enlarge" could never take it past about half
+   the window width however large the width calculation said. Collapse to one
+   column and drop the hero, so the symbol really does get the whole viewport. */
+body.qr-large .split {
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+body.qr-large .hero {
+  display: none;
+}
+body.qr-large .split {
+  width: 100%;
+}
+body.qr-large .stage {
+  padding: 1rem;
+  align-items: center;
+  width: 100%;
+  max-width: none;
+}
+/* The card is narrower than the symbol it now holds, so it has to give up its
+   reading-width cap in this mode or it clips the right-hand side of the code --
+   which looks like an ordinary QR and is unreadable. */
+body.qr-large .panel {
+  width: 100%;
+  max-width: none;
+}
 body.qr-large .qr {
-  width: min(92vw, 92vh);
+  width: min(94vw, 94vh);
   max-width: none;
   padding: 1.25rem;
 }
@@ -962,9 +995,14 @@ body.qr-large h1 {
 .stage .open-wallet:hover,
 .stage .ghost:hover { color: var(--heading); }
 
-/* The code itself, given the room it needs. */
+/* The code itself, given the room it needs.
+   The symbol FILLS its container rather than being pinned to a size of its own.
+   `.stage .qr svg` outranks the `.qr svg` rule above, so a fixed width here was the
+   real ceiling on this page: a 61-module code was being drawn at 17rem, about four
+   and a half pixels per module, and a phone camera cannot resolve that. Every
+   adjustment to .qr's own width was invisible because of it. */
 .stage .qr { margin: 0.25rem auto 1rem; }
-.stage .qr svg, .stage .qr img, .stage .qr canvas { width: min(17rem, 62vw); height: auto; }
+.stage .qr svg, .stage .qr img, .stage .qr canvas { width: 100%; height: auto; display: block; }
 
 /* The alternatives to scanning belong on one line, under the code, as choices
    you may not need — not as a stack of equals competing with it. */
