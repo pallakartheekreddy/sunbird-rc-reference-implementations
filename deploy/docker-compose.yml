@@ -199,12 +199,21 @@ services:
   # answer 3 forbids committing them.
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
+    # Its realms now live in Postgres rather than an embedded H2 in the container's
+    # writable layer, so it cannot start before the database is accepting connections.
+    depends_on:
+      db:
+        condition: service_healthy
     platform: linux/amd64
     restart: unless-stopped
     command: ["start-dev", "--import-realm", "--http-relative-path=/auth"]
     environment:
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USER:-admin}
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://db:5432/keycloak
+      - KC_DB_USERNAME=postgres
+      - KC_DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - KC_HTTP_ENABLED=true
       - KC_HOSTNAME_STRICT=false
       # Behind nginx: Keycloak must build absolute URLs from the forwarded host,
@@ -212,6 +221,15 @@ services:
       - KC_PROXY_HEADERS=xforwarded
       - KC_HEALTH_ENABLED=true
     volumes:
+      # Keycloak's OWN database, and the reason it is here. `start-dev` keeps an embedded
+      # H2 under /opt/keycloak/data/h2, which without a volume lives in the container's
+      # writable layer and is destroyed the moment the container is recreated. --import-realm
+      # then re-imports all four realms and Keycloak mints a NEW service-account user for
+      # every client. The Authority Service's TenantMembership rows are in Postgres, which
+      # IS durable, so they keep naming the previous subjects and every tenant becomes
+      # invisible to its own administrator -- reported as "this resource already exists but
+      # is not visible to the principal this script is using", which names neither Keycloak
+      # nor the re-import. Found after an out-of-memory kill recreated the stack.
       - ./keycloak/realm-age.json:/opt/keycloak/data/import/realm-age.json:ro
       # A second realm for Iteration 02 rather than more accounts in `age`. The
       # subject claim differs — nationalId here, citizenId there — and that claim
@@ -1016,3 +1034,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+

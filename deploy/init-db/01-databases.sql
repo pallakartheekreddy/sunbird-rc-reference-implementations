@@ -26,6 +26,15 @@ CREATE DATABASE credential_schema;
 CREATE DATABASE authority;
 CREATE DATABASE authority_shadow;
 
+-- Keycloak's own database. Without it Keycloak runs `start-dev` on an embedded H2
+-- inside the container's writable layer, which is destroyed whenever the container is
+-- recreated. --import-realm then re-imports every realm and mints a NEW service-account
+-- user for each client, while the Authority Service's TenantMembership rows -- here, in
+-- durable Postgres -- go on naming the previous subjects. Every tenant becomes invisible
+-- to its own administrator, reported as "this resource already exists but is not visible
+-- to the principal this script is using", which names neither Keycloak nor the re-import.
+CREATE DATABASE keycloak;
+
 -- No per-use-case database. Age, Agriculture and Education share the registry's
 -- database and are separated by their own tables/entities (Anand's answer 10,
 -- PRODUCT and DESIGN §7). These three remain separate because they are NOT
