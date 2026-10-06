@@ -76,13 +76,28 @@ fi
 # metadata fetch failed. Building for a remote deployment on a machine that also runs a
 # local stack takes that fallback silently, which is exactly how a wallet got shipped to a
 # device pointing at http://localhost.
+# The exception is a USB reverse tunnel: `adb reverse tcp:80 tcp:80` makes the phone's own
+# localhost:80 reach this machine, so a loopback issuer url is then genuinely reachable --
+# and it is the only way to demo a stack whose PUBLIC_URL is localhost without re-bootstrapping
+# every DID under a new host. It has to be opt-in and loud rather than detected: the tunnel
+# can be dropped by unplugging the cable, and the resulting failure (an empty issuer
+# directory) names nothing.
 case "$ISSUER" in
   *localhost*|*127.0.0.1*|*0.0.0.0*|*'[::1]'*)
-    die "the issuer url is a loopback address, taken from $ISSUER_FROM:
+    if [ "${ALLOW_LOOPBACK_ISSUER:-}" = true ]; then
+      printf '  note: ALLOW_LOOPBACK_ISSUER=true — building against a loopback issuer:\n    %s\n' "$ISSUER" >&2
+      printf '  This only works while `adb reverse tcp:80 tcp:80` is in place. Unplug the\n' >&2
+      printf '  cable and the issuer directory goes empty with no error on the device.\n' >&2
+    else
+      die "the issuer url is a loopback address, taken from $ISSUER_FROM:
     $ISSUER
   A phone cannot reach it, so the issuer directory would be empty on the device with
   no error anywhere. Pass the deployment's url instead, one base per issuer:
-    ./scripts/build-wallet.sh --issuer 'https://host/farmer,https://host/land'" ;;
+    ./scripts/build-wallet.sh --issuer 'https://host/farmer,https://host/land'
+  Or, for a USB-tethered device against a localhost stack, set up the tunnel and say so:
+    adb reverse tcp:80 tcp:80
+    ALLOW_LOOPBACK_ISSUER=true ./scripts/build-wallet.sh"
+    fi ;;
 esac
 
 # Each entry is fetched at <url>/.well-known/openid-credential-issuer, so a deployment
