@@ -38,6 +38,44 @@ import {
 } from './domains/education/index.mjs';
 import QRCode from 'qrcode-svg';
 
+// A QR whose modules land on WHOLE pixels.
+//
+// qrcode-svg maps the symbol onto whatever width it is given, so a 61-module symbol on a
+// 480px canvas gets a module pitch of 7.8688... px and every rect carries a fractional x.
+// Combined with shape-rendering:crispEdges -- which snaps each rect independently to the
+// device pixel grid -- adjacent modules round different ways and the symbol grows hairline
+// white seams and doubled edges. A decoder measures module edges, so that is exactly the
+// wrong noise to add, and it gets worse the larger the symbol is drawn.
+//
+// Measure the module count from a first pass, then regenerate on a canvas that is an exact
+// multiple of it. The symbol is unchanged; only its geometry becomes integral.
+//
+// The Education request pins THREE credential types and so carries the longest payload in
+// the showcase, which is where this was found: a Galaxy A05 could not lock onto it.
+function crispQrSvg(content) {
+  const opts = { content, padding: 4, ecl: 'L' };
+  const probe = new QRCode({ ...opts, width: 480, height: 480 }).svg();
+  // Every module rect shares one width. Ignore the full-canvas background rect.
+  const widths = [...probe.matchAll(/width="([0-9.]+)"/g)].map((m) => Number(m[1]));
+  const pitch = Math.min(...widths.filter((w) => w > 0 && w < 480));
+  const modules = Number.isFinite(pitch) && pitch > 0 ? Math.round(480 / pitch) : 0;
+  if (!modules) return probe;
+  // 8px per module keeps a dense symbol well above what a phone camera needs at arm's
+  // length, without making the canvas unreasonable on a laptop screen.
+  const side = modules * 8;
+  const svg = new QRCode({ ...opts, width: side, height: side }).svg();
+
+  // A viewBox, which qrcode-svg does not emit. Without one the SVG cannot SCALE: the
+  // module rects keep their absolute coordinates, so any CSS that renders the element
+  // smaller than the generated canvas simply CLIPS the symbol instead of shrinking it.
+  // Measured on the admissions page: a 488px symbol rendered into 272px, cutting off 44%
+  // of it -- a QR missing its right-hand side and bottom-right alignment pattern, which no
+  // decoder can read and which looks, at a glance, like a perfectly ordinary QR code.
+  // With a viewBox the geometry above is a coordinate system rather than a pixel size, so
+  // the symbol stays whole at whatever size the page gives it.
+  return svg.replace('<svg ', `<svg viewBox="0 0 ${side} ${side}" preserveAspectRatio="xMidYMid meet" `);
+}
+
 const PORT = Number(process.env.PORT || 4300);
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost').replace(/\/+$/, '');
 const AGE_VCT = process.env.AGE_VCT || `${PUBLIC_URL}/vct/age-verification-credential`;
@@ -456,7 +494,7 @@ async function createSession(useCaseName = 'age') {
       // and the spec's 4-module quiet zone fixes it, and 'L' error correction
       // drops a version — fewer, larger modules — which matters far more here
       // than resilience to a smudged print.
-      qrSvg: new QRCode({ content: vp.qr_data, padding: 4, width: 480, height: 480, ecl: 'L' }).svg(),
+      qrSvg: crispQrSvg(vp.qr_data),
       requestedClaims,
       expiresInSeconds: SESSION_TTL_SECONDS,
     },
