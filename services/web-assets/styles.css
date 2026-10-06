@@ -265,8 +265,14 @@ button:focus-visible {
      works against a phone camera on a backlit LCD, and asking someone to
      remember a toggle mid-demo is how a take gets lost. Scales on the viewport's
      short edge so it stays square-ish on a laptop and cannot overflow a phone. */
-  width: min(90vw, 78vh);
-  max-width: 100%;
+  /* Fill whatever column this sits in, bounded by the viewport's height so it
+     stays square-ish. In the split layout that column is about half the window,
+     which is NOT enough module pitch for a phone camera -- that is what
+     `body.qr-large` below exists to fix, and why it has to collapse the split
+     rather than just hide some text. */
+  width: 100%;
+  max-width: min(92vw, 82vh);
+  align-self: center;
   padding: 1rem;
   border-radius: var(--radius-inner);
   background: #fff;
@@ -651,8 +657,35 @@ footer strong {
 /* Cross-device scanning only. The QR grows to the viewport so each module is as
    large as the screen allows, and everything competing with it gets out of the
    way. A phone camera decodes module pitch, not page design. */
+/* The split layout arrived after this mode did, and silently defeated it: the QR
+   sits in the right-hand column, so "enlarge" could never take it past about half
+   the window width however large the width calculation said. Collapse to one
+   column and drop the hero, so the symbol really does get the whole viewport. */
+body.qr-large .split {
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+body.qr-large .hero {
+  display: none;
+}
+body.qr-large .split {
+  width: 100%;
+}
+body.qr-large .stage {
+  padding: 1rem;
+  align-items: center;
+  width: 100%;
+  max-width: none;
+}
+/* The card is narrower than the symbol it now holds, so it has to give up its
+   reading-width cap in this mode or it clips the right-hand side of the code --
+   which looks like an ordinary QR and is unreadable. */
+body.qr-large .panel {
+  width: 100%;
+  max-width: none;
+}
 body.qr-large .qr {
-  width: min(92vw, 92vh);
+  width: min(94vw, 94vh);
   max-width: none;
   padding: 1.25rem;
 }
@@ -680,3 +713,320 @@ body.qr-large h1 {
   font-size: 0.9rem;
   cursor: pointer;
 }
+
+/* ---- policy summary --------------------------------------------------- */
+/* Three different kinds of fact used to be appended into one flat `.chips`
+   run with "· accepts" and "· requires" floating between them as bare text.
+   Twenty-odd identical pills wrapping into each other read as debug output
+   rather than as a portal telling an applicant what it will ask for — which is
+   the single thing on this page an applicant is entitled to understand before
+   they scan anything.
+   
+   Same data, still read from the service. Only the grouping is new: what it
+   asks for, who it accepts it from, and the rule it applies. */
+.policy {
+  display: grid;
+  gap: 1.15rem;
+  margin-top: 1.6rem;
+  text-align: left;
+}
+
+.policy-block {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.policy-label {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* One credential per line, so `learnerId` arriving three times stays visibly
+   three separate cards rather than one long run. */
+.policy-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.policy-role {
+  min-width: 5.5rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--heading);
+  opacity: 0.75;
+}
+
+/* An issuer is an organisation, not a value: outlined rather than filled, so a
+   glance separates "who I trust" from "what I am asking for". */
+.chip.issuer {
+  background: var(--surface);
+  border-color: var(--hairline);
+  font-weight: 600;
+}
+
+/* A threshold is a number being compared. Tabular figures so 60 and 70 line up
+   and the one that differs between the two policies is easy to see. */
+.chip.rule {
+  background: var(--surface);
+  border-color: rgba(204, 133, 69, 0.45);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+@media (max-width: 30rem) {
+  .policy-role {
+    min-width: 100%;
+    margin-bottom: 0.1rem;
+  }
+}
+
+/* ---- split layout ----------------------------------------------------- */
+/* A dark statement panel beside a focused action panel. The single centred
+   column read as a phone page stretched across a desktop: lots of dead margin,
+   nothing establishing whose portal this is, and the call to action competing
+   with body copy for the same middle third.
+   
+   Everything that explains moves left and stays put. Everything you DO — start,
+   scan, read the verdict — lives in one column on the right and never moves. */
+.split {
+  display: grid;
+  min-height: 100vh;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  padding: 3rem 2.5rem;
+  color: var(--paper, #fbf8f1);
+  background:
+    radial-gradient(38rem 26rem at 78% 18%, rgba(204, 133, 69, 0.22), transparent 62%),
+    radial-gradient(30rem 22rem at 12% 82%, rgba(90, 154, 160, 0.18), transparent 60%),
+    linear-gradient(158deg, #123038 0%, #1e3d47 52%, #14272e 100%);
+}
+
+.hero-inner {
+  max-width: 34rem;
+  display: grid;
+  gap: 1.15rem;
+}
+
+.hero h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+
+/* One word carries the accent, as the reference does — the number of things
+   being asked for, because that is the claim the page is making. */
+.hero h1 .accent { color: #e8a765; }
+
+.hero .lede {
+  margin: 0;
+  max-width: 30rem;
+  color: rgba(251, 248, 241, 0.74);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.hero .brand,
+.hero .brand .service { color: rgba(251, 248, 241, 0.82); }
+.hero .brand .divider { background: rgba(251, 248, 241, 0.3); }
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  padding: 2.5rem 2rem;
+  background: var(--paper, #fbf8f1);
+}
+
+.stage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.stage-service {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.stage .panel { width: 100%; max-width: 34rem; margin-inline: auto; }
+.stage footer { margin-top: auto; padding-top: 2rem; background: none; }
+.stage footer .inner { max-width: 34rem; margin-inline: auto; text-align: left; }
+
+@media (min-width: 64rem) {
+  .split { grid-template-columns: 1.05fr 1fr; }
+  .hero { padding: 4rem 4rem; }
+  .stage { padding: 3.5rem 3rem; overflow-y: auto; max-height: 100vh; }
+}
+
+/* Under that, the hero becomes a header band rather than disappearing — the
+   phone is where this is actually scanned, and the page still has to say whose
+   portal it is above the fold. */
+@media (max-width: 63.99rem) {
+  .hero { padding: 2.25rem 1.5rem 2rem; }
+  .hero h1 { font-size: clamp(1.75rem, 6vw, 2.25rem); }
+  .stage { padding: 2rem 1.25rem 1.5rem; }
+}
+
+/* Role label and its chips as two columns, so a wrapped claim lines up under
+   the first chip instead of under the label. */
+.policy-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0.35rem 0.6rem;
+}
+.policy-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+/* ---- what to do ------------------------------------------------------- */
+/* Someone landing here has two questions — why am I on this page, and what do
+   I do next. The hero answers the first. These three lines answer the second,
+   and they sit ABOVE the button because knowing what is about to happen is what
+   makes a stranger willing to press it. */
+.steps {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+  text-align: left;
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--heading);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.step-n {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  background: var(--sunflower);
+  border: 1px solid rgba(168, 82, 54, 0.28);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+/* The claim-by-claim breakdown is an answer to "prove it", not to "what do I
+   do". Behind a disclosure, so it is one click away and never in the way. */
+.policy-disclosure {
+  margin-top: 1.75rem;
+  border-top: 1px solid var(--hairline);
+  padding-top: 1rem;
+  text-align: left;
+}
+
+.policy-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.policy-disclosure > summary::-webkit-details-marker { display: none; }
+.policy-disclosure > summary::before {
+  content: '\203a';
+  display: inline-block;
+  margin-right: 0.45rem;
+  transition: transform 0.15s ease;
+}
+.policy-disclosure[open] > summary::before { transform: rotate(90deg); }
+.policy-disclosure > summary:hover { color: var(--heading); }
+
+/* The button is the one thing on this column that must be unmissable. */
+.stage .primary {
+  width: 100%;
+  padding: 0.95rem 1.5rem;
+  font-size: 1.02rem;
+}
+
+/* The footer was written for the old full-width dark band. Inside the light
+   action column it was near-invisible — pale text on cream. */
+.stage footer .inner,
+.stage footer .inner span { color: var(--muted); }
+.stage footer .wordmark { color: var(--rust, #a85236); opacity: 0.85; }
+.stage footer .inner strong { color: var(--heading); font-weight: 600; }
+
+/* "How this works" is a heading, not a call to action; the eyebrow arrow made
+   it look like something to click. */
+.stage #request-eyebrow::after { content: none; }
+
+/* Once a check is running there is one instruction and one code. The three
+   secondary actions were stacked as full buttons under it, which read as three
+   more decisions to make; they are alternatives to scanning, not steps. */
+.stage .open-wallet,
+.stage .ghost {
+  display: inline-block;
+  width: auto;
+  padding: 0.35rem 0.1rem;
+  margin: 0 0.9rem;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.stage .open-wallet { color: var(--rust, #a85236); }
+.stage .open-wallet:hover,
+.stage .ghost:hover { color: var(--heading); }
+
+/* The code itself, given the room it needs.
+   The symbol FILLS its container rather than being pinned to a size of its own.
+   `.stage .qr svg` outranks the `.qr svg` rule above, so a fixed width here was the
+   real ceiling on this page: a 61-module code was being drawn at 17rem, about four
+   and a half pixels per module, and a phone camera cannot resolve that. Every
+   adjustment to .qr's own width was invisible because of it. */
+.stage .qr { margin: 0.25rem auto 1rem; }
+.stage .qr svg, .stage .qr img, .stage .qr canvas { width: 100%; height: auto; display: block; }
+
+/* The alternatives to scanning belong on one line, under the code, as choices
+   you may not need — not as a stack of equals competing with it. */
+.alt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 0.4rem;
+  margin-top: 0.35rem;
+}
+.stage .alt-actions .open-wallet,
+.stage .alt-actions .ghost { margin: 0 0.5rem; }
+
+/* On the result screen the rows sit inside a <dl> cell, so they need no top
+   margin of their own. */
+.detail .policy { gap: 0.55rem; margin-top: 0; }
+
+/* The disclosed claims are the widest thing on the result screen, and they were
+   landing in the narrow value column of a `max-content 1fr` grid — the "Learner
+   (correlated across all three)" label sets that first column, so every chip
+   wrapped to two lines. Give this one pair the full card width. */
+.detail dt:has(+ dd > .policy) {
+  grid-column: 1 / -1;
+  margin-bottom: -0.35rem;
+}
+.detail dd:has(> .policy) { grid-column: 1 / -1; }

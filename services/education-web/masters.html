@@ -13,35 +13,50 @@
        the difference between a university and an employer must come out of the
        POLICY, not out of two separately written front ends. -->
   <body data-policy="masters">
-    <main class="shell">
-      <header>
-        <span class="brand">
-          <span class="mark" aria-hidden="true">◦</span>
-          sunbird
-          <span class="divider" aria-hidden="true"></span>
-          <span class="service">State University — Master's admissions</span>
-        </span>
-        <h1>Apply for a Computer Science Master's</h1>
-        <p class="lede">Scan the code with your wallet. You will be asked to share <strong>eleven things</strong> from three cards — your school, college and university records — enough to confirm all three belong to you and that each result meets the published bar. Not your National ID, not your name, not a single subject mark.</p>
-      </header>
+    <div class="split">
+      <aside class="hero">
+        <div class="hero-inner">
+          <span class="brand">
+            <span class="mark" aria-hidden="true">◦</span>
+            sunbird
+          </span>
+          <h1>Apply for a Computer Science Master's</h1>
+          <p class="lede">Prove your school, college and university results with your wallet — without handing over your name, your National ID, or a single subject mark.</p>
+        </div>
+      </aside>
+
+      <main class="stage">
+        <div class="stage-head">
+          <span class="stage-service">State University — Master's admissions</span>
+        </div>
 
       <section class="panel" id="panel-request">
-        <p class="eyebrow" id="request-eyebrow">Start the application</p>
+        <p class="eyebrow" id="request-eyebrow">How this works</p>
+        <ol class="steps">
+          <li><span class="step-n">1</span><span>Scan the code below with your wallet app</span></li>
+          <li><span class="step-n">2</span><span>Check what is being shared, then approve it</span></li>
+          <li><span class="step-n">3</span><span>See the decision straight away</span></li>
+        </ol>
         <button id="start" class="primary">Start the check</button>
         <div id="qr" class="qr" hidden></div>
         <!-- Same-device path: opening this page ON the phone and tapping here
              hands the request to the wallet through its openid4vp:// handler with
              no camera in the loop. -->
+        <p class="muted" id="hint" hidden>
+          <span class="pulse" aria-hidden="true"></span>
+          Waiting for your wallet… <span id="countdown"></span>
+        </p>
+        <div class="alt-actions">
         <a id="open-wallet" class="open-wallet" hidden>Open in wallet</a>
         <button id="enlarge" class="ghost" hidden>Enlarge for scanning</button>
         <!-- A declining wallet posts nothing, so the verifier has to be able to
              stop waiting itself. Told to the service, not faked in the page. -->
         <button id="cancel" class="ghost" hidden>Cancel this check</button>
-        <p class="muted" id="hint" hidden>
-          <span class="pulse" aria-hidden="true"></span>
-          Waiting for your wallet… <span id="countdown"></span>
-        </p>
-        <div class="chips" id="policy"></div>
+        </div>
+        <details class="policy-disclosure">
+          <summary>See exactly what is requested</summary>
+          <div class="policy" id="policy"></div>
+        </details>
       </section>
 
       <section class="panel result" id="panel-result" hidden>
@@ -55,14 +70,14 @@
         <dl id="detail" class="detail"></dl>
         <button id="again" class="secondary">Run another check</button>
       </section>
-    </main>
-
     <footer>
       <div class="inner">
         <span class="wordmark">sunbird</span>
         <span>Synthetic demonstration data, and not a real admissions policy. Eligibility to <strong>apply</strong> is not admission: ranking and the admission list depend on the whole applicant pool and are out of scope. The decision is made by the <strong>verifier service</strong> after cryptographic verification, an issuer trust check per credential, and a Learner ID correlation check across all three — this page only displays it.</span>
       </div>
-    </footer>
+      </footer>
+      </main>
+    </div>
     <script src="app.js"></script>
   </body>
 </html>
