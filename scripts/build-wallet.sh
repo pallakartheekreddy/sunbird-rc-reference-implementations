@@ -192,9 +192,37 @@ GRADLEPROPS
 # One ABI on purpose: the generated gradle.properties builds all four, which
 # compiles every native module four times. That is how the first attempt spent
 # two hours and fourteen minutes before dying in Skia's JNI compile.
+# Force the JS bundle to be rebuilt. Gradle keys createBundleReleaseJsAndAssets on the JS
+# SOURCES, but app.config.js reads CREDENTIAL_ISSUER_URLS and SHOWCASE_DEPLOYMENT from the
+# ENVIRONMENT -- so pointing a build at a different deployment changes no tracked input, the
+# task is considered up to date, and the previous bundle is packaged again. The build then
+# prints the new issuer list and ships the old one.
+#
+# That is how a wallet built for a remote deployment was installed still carrying
+# http://localhost, and the only visible symptom was an empty issuer directory on the device
+# with no request ever reaching the server. Deleting the task's output is what makes it run.
+rm -rf "$APP/android/app/build/generated/assets/react" \
+       "$APP/android/app/build/intermediates/assets/release"
 ( cd "$APP/android" && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a )
+
 
 APK="$APP/android/app/build/outputs/apk/release/app-release.apk"
 [ -f "$APK" ] || die "gradle reported success but produced no APK at $APK"
+
+# Prove the APK carries the issuer list it was asked for, rather than trusting that it does.
+# The values live in the EXPO MANIFEST embedded at assets/app.config -- `extra` read through
+# ExpoConstants.expoConfig -- and not in index.android.bundle, which is why grepping the JS
+# bundle for them finds nothing even on a correct build.
+EMBEDDED="$(unzip -p "$APK" assets/app.config 2>/dev/null \
+  | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin).get("extra",{}).get("credentialIssuerUrls") or []))' 2>/dev/null)"
+FIRST_ISSUER="${CREDENTIAL_ISSUER_URLS%%,*}"
+case "$EMBEDDED" in
+  *"$FIRST_ISSUER"*) printf '  embedded %s issuer url(s), first is %s\n' \
+                       "$(printf '%s\n' "$EMBEDDED" | grep -c .)" "$FIRST_ISSUER" >&2 ;;
+  *) die "the APK does not carry $FIRST_ISSUER in assets/app.config.
+  It was built for a different deployment, and the only symptom on the device would be an
+  empty issuer directory with no request reaching the server. Embedded instead:
+$(printf '%s' "${EMBEDDED:-  (none)}")" ;;
+esac
 printf '\n  %s\n  %s bytes\n\n  install it with:\n    adb install -r %s\n\n' \
   "$APK" "$(wc -c < "$APK" | tr -d ' ')" "$APK"
