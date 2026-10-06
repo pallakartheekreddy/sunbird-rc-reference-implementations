@@ -262,6 +262,35 @@ services:
       retries: 40
       start_period: 60s
 
+  # The Authority Service's operator console: tenants, registries, records, the
+  # approval queue, and the CSV import an operator uses to onboard a batch.
+  #
+  # On its own LOOPBACK port rather than behind the 8088 operator listener. The
+  # property that makes 8088 safe is that Docker publishes it on 127.0.0.1 only, and
+  # this has exactly that. Putting it at a PATH on 8088 would need the UI rebuilt with
+  # a Vite base and its client changed -- it calls an absolute /api/v1 and relies on
+  # being same-origin with its own proxy, which a subpath silently breaks.
+  #
+  # Reach it from another machine the same way as the rest of the operator surface:
+  #   ssh -L 8090:127.0.0.1:8090 user@host
+  authority-admin-ui:
+    image: ${AUTHORITY_ADMIN_UI_IMAGE:-sunbird-rc-authority-admin-ui:local}
+    restart: unless-stopped
+    depends_on:
+      authority-service:
+        condition: service_healthy
+    environment:
+      - AUTHORITY_SERVICE_URL=http://authority-service:3334
+    ports:
+      # 127.0.0.1 ONLY. An administrative console answering on a public interface is a
+      # different product with a different threat model.
+      - '127.0.0.1:${ADMIN_UI_PORT:-8090}:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:8080/healthz >/dev/null || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   # The OpenID4VCI / OpenID4VP protocol façade. Native to v2.1.0 — this is why
   # the architecture needs no standards adapter.
   oid4vc-service:
