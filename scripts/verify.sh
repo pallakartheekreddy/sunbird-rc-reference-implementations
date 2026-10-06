@@ -454,7 +454,7 @@ if [ -d "$WFORK/.git" ]; then
   # No `exit` in a check body: check() evals in the current shell, so an exit here
   # terminates verify.sh and every later check is silently skipped. Ask instead
   # whether the filtered difference is empty.
-  ADAPTED="NOTICE|SUNBIRD-CHANGES\.md|apps/wallet/(app\.config\.js|base\.app\.config\.js|eas\.json)"
+  ADAPTED="NOTICE|SUNBIRD-CHANGES\.md|apps/wallet/(app\.config\.js|base\.app\.config\.js|eas\.json|src/app/authenticate\.tsx)"
   # The tip is READ FROM scripts/vendor-wallet.sh, which is the one place it is
   # pinned. It used to be written out again here, so advancing the fork meant
   # updating the same constant in two files — and the second one was missed: the

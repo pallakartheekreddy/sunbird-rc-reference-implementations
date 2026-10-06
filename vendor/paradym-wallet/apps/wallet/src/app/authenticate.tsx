@@ -90,8 +90,15 @@ export default function Authenticate() {
 
   if (paradym.state === 'unlocked') {
     // Expo and urls as query params don't go well together, so we encoded the url as base64
+    //
+    // fromBase64Url, not fromBase64: +native-intent.tsx encodes this with toBase64Url, which
+    // is UNPADDED, and fromBase64 requires padding. The pair therefore only worked when the
+    // encoded length happened to be a multiple of 4 -- a deeplink either opened or died with
+    // "Could not decode data from base64 string" purely on the length of its url. Seen with
+    // two verifiers on one deployment: the admissions request encoded to 392 characters and
+    // worked, the employer request to 390 and did not.
     const redirect = redirectAfterUnlock
-      ? TypedArrayEncoder.toUtf8String(TypedArrayEncoder.fromBase64(redirectAfterUnlock))
+      ? TypedArrayEncoder.toUtf8String(TypedArrayEncoder.fromBase64Url(redirectAfterUnlock))
       : '/'
 
     return <Redirect href={redirect} />
