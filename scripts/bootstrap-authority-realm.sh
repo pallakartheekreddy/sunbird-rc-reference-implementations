@@ -104,7 +104,19 @@ while read -r client_id key; do
 
   secret="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
     "$ADMIN/clients/$uuid/client-secret" | json 'd.get("value","")')"
-  [ -n "$secret" ] || die "client '$client_id' has no secret — is it a confidential client?"
+  # A confidential client imported from the realm file can exist with NO secret yet:
+  # Keycloak materialises one on demand rather than at import. Reading it then returns an
+  # empty value, which is not the same as "this is a public client" -- the old message said
+  # exactly that and sent the reader to inspect a realm file that was already correct.
+  # Regenerating is the documented way to obtain one, and is safe here because nothing has
+  # the old value: this script is the only thing that stores it.
+  if [ -z "$secret" ]; then
+    secret="$(curl -fsS --max-time 15 -X POST -H "authorization: Bearer $admin_token" \
+      "$ADMIN/clients/$uuid/client-secret" | json 'd.get("value","")')"
+    [ -n "$secret" ] && printf '  \033[2m·\033[0m %s  secret generated on first use\n' "$client_id"
+  fi
+  [ -n "$secret" ] || die "client '$client_id' has neither a secret nor one that can be
+  generated. Confirm it is confidential (publicClient false) in deploy/keycloak/realm-authority.json."
 
   subject="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
     "$ADMIN/clients/$uuid/service-account-user" | json 'd.get("id","")')"
