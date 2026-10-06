@@ -66,8 +66,25 @@ print(json.dumps(rows[0]) if rows else "")
 # either way. An update matters more than it sounds: a re-run after editing a
 # fixture must change the record, or the demo silently keeps telling the old
 # story.
+# ONLY=Entity[,Entity...] restricts this to some of the four entities. The case that needs
+# it: once School and College records are owned by the Authority Service, this script must
+# not touch them. It would -- it finds them by learnerId and patches any field that differs
+# from its own fixture, and its College fixture hardcodes specialization COMPUTER_SCIENCE
+# for every learner while the MIS pull correctly produces INFORMATION_TECHNOLOGY and
+# MECHANICAL for two of them. The patch would succeed and quietly change managed records.
+#
+#   ONLY=EducationLearner,UniversityRecord ./scripts/seed-education.sh
+#
+# Filtered here, in seed(), because every fixture including the structural ones goes through
+# it -- guarding the call sites instead would leave the ones added later unguarded.
+wants() {
+  [ -z "${ONLY:-}" ] && return 0
+  case ",$ONLY," in *",$1,"*) return 0 ;; *) return 1 ;; esac
+}
+
 seed() {
   local entity="$1" field="$2" value="$3" label="$4" body="$5" existing osid updated
+  wants "$entity" || return 0
   existing="$(fetch_record "$entity" "$field" "$value")"
 
   if [ -z "$existing" ]; then
