@@ -52,6 +52,13 @@ const PROTOCOL_DBS = [
   // added here buys no exemption from those.
   'authority',
   'authority_shadow',
+  // Keycloak's realm store, on the same grounds and for a reason this suite exists
+  // to catch: it used to run `start-dev` on an embedded H2 inside the container's
+  // writable layer, so recreating the container destroyed every realm and minted new
+  // service-account subjects, leaving the Authority Service's memberships naming
+  // principals that no longer existed. It holds no use-case data -- no learner, no
+  // farmer, no citizen -- only realms, clients and service accounts.
+  'keycloak',
 ];
 
 async function psql(sql, database = SHOWCASE_DB) {
