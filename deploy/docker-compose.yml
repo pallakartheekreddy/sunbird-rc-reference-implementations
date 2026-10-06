@@ -248,7 +248,13 @@ services:
   # the architecture needs no standards adapter.
   oid4vc-service:
     image: ${OID4VC_IMAGE:-sunbird-rc-oid4vc-service:v2.1.0-authcode.714a8464}
-    platform: linux/amd64
+    # NO platform pin, unlike registry/identity/credential: those are upstream
+    # images published for amd64 only. This one is BUILT FROM SOURCE, so it is
+    # whatever the machine that built it is -- arm64 on a Mac, amd64 on the
+    # sandbox. Pinning amd64 here made compose ignore the locally built arm64
+    # image and try to pull `sunbird-rc-oid4vc-service` from Docker Hub, where
+    # no such repository exists: "pull access denied ... repository does not
+    # exist", which names neither the platform nor the local image.
     restart: unless-stopped
     depends_on:
       credential:
@@ -398,7 +404,6 @@ services:
 
   oid4vc-farmer:
     image: ${OID4VC_IMAGE:-sunbird-rc-oid4vc-service:v2.1.0-authcode.714a8464}
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       credential:
@@ -466,7 +471,6 @@ services:
 
   oid4vc-land:
     image: ${OID4VC_IMAGE:-sunbird-rc-oid4vc-service:v2.1.0-authcode.714a8464}
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       credential:
@@ -545,7 +549,6 @@ services:
 
   oid4vc-university-vp:
     image: ${OID4VC_IMAGE:-sunbird-rc-oid4vc-service:v2.1.0-authcode.714a8464}
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       identity:
@@ -586,7 +589,6 @@ services:
 
   oid4vc-employer-vp:
     image: ${OID4VC_IMAGE:-sunbird-rc-oid4vc-service:v2.1.0-authcode.714a8464}
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       identity:
@@ -641,7 +643,6 @@ services:
 
   oid4vc-school:
     image: ${OID4VC_IMAGE:-sunbird-rc-oid4vc-service:v2.1.0-authcode.714a8464}
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       credential:
@@ -705,7 +706,6 @@ services:
 
   oid4vc-college:
     image: ${OID4VC_IMAGE:-sunbird-rc-oid4vc-service:v2.1.0-authcode.714a8464}
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       credential:
@@ -769,7 +769,6 @@ services:
 
   oid4vc-university:
     image: ${OID4VC_IMAGE:-sunbird-rc-oid4vc-service:v2.1.0-authcode.714a8464}
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       credential:
@@ -920,7 +919,10 @@ services:
   # Multi-architecture (linux/amd64 and linux/arm64), so it needs no platform pin
   # and runs natively on the demo host and on a development machine alike.
   authority-service:
-    image: ghcr.io/pallakartheekreddy/sunbird-rc-authority-service@sha256:56333d4561bff7222db34c6089d0cf857a69cb6a156037d25c1650e14e2b70e3
+    # Overridable so a locally built authority-service can be run against this stack
+    # without editing a tracked digest. The published digest stays the default, so an
+    # unset variable reproduces the deployment exactly.
+    image: ${AUTHORITY_SERVICE_IMAGE:-ghcr.io/pallakartheekreddy/sunbird-rc-authority-service@sha256:56333d4561bff7222db34c6089d0cf857a69cb6a156037d25c1650e14e2b70e3}
     restart: unless-stopped
     depends_on:
       db:
