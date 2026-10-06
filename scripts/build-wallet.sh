@@ -166,6 +166,29 @@ printf 'building the wallet\n  jdk     %s\n  sdk     %s\n  issuer  %s\n  variant
 
 ( cd "$APP" && npx expo prebuild --platform android --no-install )
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$APP/android/local.properties"
+
+# Memory, appended AFTER prebuild because prebuild regenerates gradle.properties and would
+# discard an edit made before it -- the same reason local.properties is written here.
+#
+# The generated default is -Xmx2048m -XX:MaxMetaspaceSize=512m, and KSP does not fit in it:
+# the build runs for over an hour and then dies with
+#   > Task :expo-updates:kspReleaseKotlin FAILED
+#   e: [ksp] java.lang.OutOfMemoryError: Metaspace
+# Metaspace holds class metadata, and an annotation processor loads a great many classes, so
+# raising -Xmx alone does nothing. The hour is not work: once Metaspace is exhausted the JVM
+# spends it in continuous full GC, which on a 16 GB machine drives the whole box into swap --
+# that run took Docker Desktop with it, killed by the OS for memory.
+#
+# workers.max caps the damage from the other half of the problem. Gradle builds several of
+# the fourteen native CMake targets at once and each one's ninja takes every core, so the
+# product oversubscribes an 8-core machine by an order of magnitude.
+cat >> "$APP/android/gradle.properties" <<'GRADLEPROPS'
+
+# Appended by scripts/build-wallet.sh -- see the comment there before changing these.
+org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=2048m
+kotlin.daemon.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=1024m
+org.gradle.workers.max=4
+GRADLEPROPS
 # One ABI on purpose: the generated gradle.properties builds all four, which
 # compiles every native module four times. That is how the first attempt spent
 # two hours and fourteen minutes before dying in Skia's JNI compile.
