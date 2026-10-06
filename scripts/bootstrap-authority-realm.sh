@@ -91,6 +91,7 @@ green "authenticated to the Keycloak admin API"
 
 say "2. Client credentials"
 ADMIN="$OPS/auth/admin/realms/$REALM"
+REALM_FILE="${REALM_FILE:-$ROOT/deploy/keycloak/realm-authority.json}"
 bootstrap_subject=""
 
 while read -r client_id key; do
@@ -98,9 +99,37 @@ while read -r client_id key; do
 
   uuid="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
     "$ADMIN/clients?clientId=$client_id" | json 'd[0]["id"] if d else ""')"
-  [ -n "$uuid" ] || die "client '$client_id' is not in the '$REALM' realm.
-  The realm file defines it, so this means an older realm is still imported. Keycloak
-  skips a realm that already exists: recreate the container to re-import it."
+  # Absent means the realm predates this client: Keycloak SKIPS a realm that already
+  # exists, so a client added to the realm file later never appears. Recreating the
+  # container to force a re-import is the obvious fix and the wrong one -- it rebuilds
+  # every service account, and the Authority Service's TenantMembership rows go on naming
+  # the previous subjects, which makes every existing tenant invisible to its own
+  # administrator. Create the one missing client instead, from the same definition the
+  # realm file carries, and leave every other client untouched.
+  if [ -z "$uuid" ]; then
+    definition="$(python3 - "$REALM_FILE" "$client_id" <<'PYEOF'
+import json, sys
+realm = json.load(open(sys.argv[1]))
+want = sys.argv[2]
+for c in realm.get("clients", []):
+    if c.get("clientId") == want:
+        # Drop fields that belong to the exporting realm rather than to this client.
+        for k in ("id", "protocolMappers", "defaultClientScopes", "optionalClientScopes"):
+            c.pop(k, None)
+        print(json.dumps(c))
+        break
+else:
+    sys.exit("'%s' is not defined in %s" % (want, sys.argv[1]))
+PYEOF
+)" || die "$client_id is not defined in $REALM_FILE"
+    curl -fsS --max-time 20 -X POST -H "authorization: Bearer $admin_token" \
+      -H 'content-type: application/json' -d "$definition" "$ADMIN/clients" >/dev/null \
+      || die "could not create client '$client_id' in the '$REALM' realm"
+    uuid="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
+      "$ADMIN/clients?clientId=$client_id" | json 'd[0]["id"] if d else ""')"
+    [ -n "$uuid" ] || die "created client '$client_id' but it cannot be read back"
+    printf '  \033[2m·\033[0m %s  created (absent from the already-imported realm)\n' "$client_id"
+  fi
 
   secret="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
     "$ADMIN/clients/$uuid/client-secret" | json 'd.get("value","")')"
