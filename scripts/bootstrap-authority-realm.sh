@@ -69,6 +69,11 @@ realm_doc="$(curl -fsS --max-time 10 "$OPS/auth/realms/$REALM" 2>/dev/null)" \
 
 # The issuer every token from this realm will carry. Pinned by the realm's frontendUrl, so
 # it does not depend on whether the caller reached Keycloak internally or through nginx.
+# The pin names the loopback operator listener rather than the container network: the
+# admin console signs operators in through a BROWSER, and a browser cannot follow
+# Keycloak's redirect to a container hostname. Both deployments reach that listener at the
+# same 127.0.0.1:8088 -- directly here, over `ssh -L` on the sandbox -- so the pin stays a
+# single constant even though it is now a client-reachable one.
 ISSUER="$(printf '%s' "$realm_doc" | json 'd["token-service"].rsplit("/protocol",1)[0]')"
 green "realm '$REALM' reachable; issuer $ISSUER"
 
@@ -207,8 +212,9 @@ say "3. Console sign-in accounts"
 # requiredActions list is empty, because VERIFY_PROFILE demands one even though it is not a
 # default action. Found by probing a live realm, not by reading the realm file.
 #
-# Passwords are demo values from the realm file. They are not secrets, and they are not
-# written to deploy/.env: nothing here needs to read them back.
+# Passwords are GENERATED per account into deploy/.env (gitignored) rather than carried in
+# the realm file, which is committed. Read them with:
+#   grep ^CONSOLE_PASSWORD_ deploy/.env
 users_json="$(python3 -c '
 import json, sys
 realm = json.load(open(sys.argv[1]))
@@ -218,10 +224,9 @@ print(json.dumps(realm.get("users", [])))
 printf '%s' "$users_json" | python3 -c '
 import json, sys
 for u in json.load(sys.stdin):
-    pw = (u.get("credentials") or [{}])[0].get("value", "")
     print("\t".join([u["username"], u.get("firstName",""), u.get("lastName",""),
-                     u.get("email",""), pw]))
-' | while IFS="$(printf '\t')" read -r username first last email password; do
+                     u.get("email","")]))
+' | while IFS="$(printf '\t')" read -r username first last email; do
   [ -n "$username" ] || continue
   uuid="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
     "$ADMIN/users?username=$username&exact=true" | json 'd[0]["id"] if d else ""')"
@@ -242,19 +247,46 @@ print(json.dumps({"username": u, "enabled": True, "emailVerified": True,
   else
     created=""
   fi
-  # Set the password every time. A run that creates the user and then fails before this
-  # leaves an account that exists and cannot sign in, which is worse than no account.
+  # The password is GENERATED and kept in deploy/.env, which is gitignored -- never taken
+  # from the realm file, which is not. These accounts are reachable from a browser, and a
+  # deployment published on a public origin would otherwise be guarded by a password anyone
+  # can read in the repository. Generated once and reused, so re-running does not lock an
+  # operator out mid-demo.
+  pw_key="CONSOLE_PASSWORD_$(printf '%s' "$username" | tr '[:lower:].-' '[:upper:]__')"
+  password="$(envval "$pw_key")"
+  if [ -z "$password" ]; then
+    # Not `tr -dc ... </dev/urandom | head -c 24`: head closes the pipe at 24 bytes, tr dies
+    # of SIGPIPE, and with `set -o pipefail` the whole script exits 141 having created users
+    # it never gave a password to.
+    password="$(python3 -c '
+import secrets, string
+print("".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24)))')"
+    set_env "$pw_key" "$password"
+    rotated=" password generated"
+  else
+    rotated=""
+  fi
+
+  # Set it every time. A run that creates the user and then fails before this leaves an
+  # account that exists and cannot sign in, which is worse than no account.
   curl -fsS --max-time 20 -X PUT -H "authorization: Bearer $admin_token" \
     -H 'content-type: application/json' "$ADMIN/users/$uuid/reset-password" \
     -d "$(python3 -c 'import json,sys; print(json.dumps({"type":"password","value":sys.argv[1],"temporary":False}))' "$password")" \
     >/dev/null || die "could not set the password for '$username'"
-  green "$username  subject $uuid$created"
+  green "$username  subject $uuid$created$rotated"
 done
 
 say "3. Realm issuer and the bootstrap administrator"
 set_env AUTHORITY_OIDC_ISSUER "$ISSUER"
-set_env AUTHORITY_OIDC_JWKS_URI "$ISSUER/protocol/openid-connect/certs"
-set_env AUTHORITY_TOKEN_URL "$ISSUER/protocol/openid-connect/token"
+# NOT derived from $ISSUER. The issuer is a name the Authority compares tokens against;
+# this is an address it must actually fetch keys from, from inside the container network,
+# where 127.0.0.1 is the Authority itself. Deriving one from the other is what breaks the
+# moment the pin stops naming a routable host.
+set_env AUTHORITY_OIDC_JWKS_URI "http://keycloak:8080/auth/realms/$REALM/protocol/openid-connect/certs"
+# Likewise an address, and read by four issuing CONTAINERS out of deploy/.env. Deriving it
+# from $ISSUER aims them at themselves, because the pin now names a loopback listener.
+# Scripts never read it: scripts/lib/authority-auth.sh builds its own from the listener.
+set_env AUTHORITY_TOKEN_URL "http://keycloak:8080/auth/realms/$REALM/protocol/openid-connect/token"
 green "AUTHORITY_OIDC_ISSUER=$ISSUER"
 
 # Root tenant creation is allowed only for a principal named here, spelled issuer|subject.

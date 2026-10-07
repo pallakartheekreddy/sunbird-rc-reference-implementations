@@ -28,3 +28,6 @@ vendor/paradym-wallet/**/*.aab
 # Local development compose overlay. Machine-specific: it names locally-built image tags and
 # credential profile ids that are generated per environment and change on every stack reset.
 deploy/compose.arm64.yml
+
+# Issuer-migration rollback dumps (scripts/migrate-authority-issuer.sh)
+.migrate-authority-issuer-*.sql

@@ -281,6 +281,12 @@ services:
         condition: service_healthy
     environment:
       - AUTHORITY_SERVICE_URL=http://authority-service:3334
+      # Where the BROWSER is sent to sign in, so this is the public origin of Keycloak as
+      # a person's machine sees it, not the container name the services use. Left empty on
+      # a stack with ENABLE_AUTH=false: the console then offers no sign-in and keeps its
+      # token and dev-header modes.
+      - OIDC_AUTHORITY_URL=${OIDC_AUTHORITY_URL:-http://127.0.0.1:8088/auth/realms/authority}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-admin-console}
     ports:
       # 127.0.0.1 ONLY. An administrative console answering on a public interface is a
       # different product with a different threat model.
@@ -995,7 +1001,12 @@ services:
       # token carries that prefix too. Without it the JWKS URI 404s and the issuer
       # comparison can never match, so EVERY token is rejected as invalid — which reads
       # like a key problem and is a path problem.
-      OIDC_ISSUER: '${AUTHORITY_OIDC_ISSUER:-http://keycloak:8080/auth/realms/authority}'
+      # The issuer the realm pins, and therefore the string every token carries and
+      # every TenantMembership row stores. It names the LOOPBACK operator listener
+      # because the admin console signs operators in through a browser, and a browser
+      # cannot follow a redirect to a container hostname. Keys are fetched separately
+      # below, so naming an origin this container cannot reach costs nothing.
+      OIDC_ISSUER: '${AUTHORITY_OIDC_ISSUER:-http://127.0.0.1:8088/auth/realms/authority}'
       OIDC_JWKS_URI: '${AUTHORITY_OIDC_JWKS_URI:-http://keycloak:8080/auth/realms/authority/protocol/openid-connect/certs}'
     ports:
       # Loopback only. The administrative API is authenticated but not public, and

@@ -69,9 +69,31 @@ request it received, so the same client credentials yield
 `http://keycloak:8080/auth/realms/authority` for an issuing service on the container
 network and `https://<public-host>/auth/realms/authority` for a setup script coming
 through the gateway. The Authority compares `iss` against one configured value, so one
-of those callers would always be rejected — reported only as `Invalid token`. Pinning is
-safe here precisely because no browser visits this realm; the citizen realms keep the
-dynamic behaviour their wallet redirects need.
+of those callers would always be rejected — reported only as `Invalid token`. The citizen
+realms keep the dynamic behaviour their wallet redirects need.
+
+**Why the pin names `127.0.0.1:8088` and not the container.** It named
+`http://keycloak:8080/auth` for as long as no browser visited this realm. The admin
+console broke that premise: it signs operators in through a real browser, and `frontendUrl`
+governs not just `iss` but every absolute URL Keycloak hands back mid-login — so Keycloak
+answered the authorization request by redirecting the browser to `http://keycloak:8080/...`,
+a hostname that exists only on the container network. The login form rendered and the next
+hop died. Pointing the pin at the loopback operator listener keeps the one property that
+made pinning worth doing — one `iss` regardless of where the token was requested — while
+making that one value client-reachable. It stays a single constant across deployments
+because the operator surface is loopback-only in both: directly here, over `ssh -L` on the
+sandbox.
+
+`OIDC_JWKS_URI` is therefore deliberately **not** derived from the issuer. The issuer is a
+name tokens are compared against; the JWKS URI is an address the Authority must actually
+fetch from, inside the container network, where `127.0.0.1` is the Authority itself.
+Collapsing the two back into one value is what breaks the moment the pin stops naming a
+routable host.
+
+Changing this pin rewrites the `iss` of every token the realm mints, and
+`TenantMembership` rows store that string — so an existing deployment needs its rows and
+its `BOOTSTRAP_ADMINS` migrated in the same step, or every tenant goes invisible to its own
+administrator. The `actorIssuer` columns are audit history and must be left alone.
 
 **Why the 60-second access token.** A static token in an environment variable cannot
 outlive its own expiry, so a deployment that works when configured stops issuing quietly

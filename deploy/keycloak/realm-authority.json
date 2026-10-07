@@ -1,14 +1,14 @@
 {
   "realm": "authority",
-  "displayName": "Authority Service (machine principals)",
+  "displayName": "Registro",
   "enabled": true,
   "sslRequired": "none",
   "registrationAllowed": false,
   "resetPasswordAllowed": false,
   "loginWithEmailAllowed": false,
-  "editUsernameAllowed": false,
+  "editUsernameAllowed": true,
   "attributes": {
-    "frontendUrl": "http://keycloak:8080/auth"
+    "frontendUrl": "http://127.0.0.1:8088/auth"
   },
   "accessTokenLifespan": 60,
   "accessTokenLifespanForImplicitFlow": 60,
@@ -120,7 +120,7 @@
       "secret": ""
     },
     {
-      "clientId": "demo-brazil-console",
+      "clientId": "admin-console",
       "name": "Authority operator console",
       "description": "Public client for the operator console: authorization code with PKCE, no secret in a browser bundle. Password grant is off so nothing can bypass the browser flow. Redirect URIs are loopback only.",
       "enabled": true,
@@ -150,20 +150,13 @@
   ],
   "users": [
     {
-      "username": "brasil.admin",
+      "username": "admin",
       "enabled": true,
       "emailVerified": true,
       "firstName": "Ana",
       "lastName": "Platform",
-      "email": "brasil.admin@example.test",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "demo-admin-pass",
-          "temporary": false
-        }
-      ]
+      "email": "admin@example.test",
+      "requiredActions": []
     },
     {
       "username": "horizonte.operator",
@@ -172,14 +165,7 @@
       "firstName": "Horizonte",
       "lastName": "Operator",
       "email": "horizonte.operator@example.test",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "demo-horizonte-op-pass",
-          "temporary": false
-        }
-      ]
+      "requiredActions": []
     },
     {
       "username": "horizonte.officer",
@@ -188,14 +174,7 @@
       "firstName": "Horizonte",
       "lastName": "Officer",
       "email": "horizonte.officer@example.test",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "demo-horizonte-off-pass",
-          "temporary": false
-        }
-      ]
+      "requiredActions": []
     },
     {
       "username": "atlantico.operator",
@@ -204,14 +183,7 @@
       "firstName": "Atlantico",
       "lastName": "Operator",
       "email": "atlantico.operator@example.test",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "demo-atlantico-op-pass",
-          "temporary": false
-        }
-      ]
+      "requiredActions": []
     },
     {
       "username": "atlantico.officer",
@@ -220,14 +192,7 @@
       "firstName": "Atlantico",
       "lastName": "Officer",
       "email": "atlantico.officer@example.test",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "demo-atlantico-off-pass",
-          "temporary": false
-        }
-      ]
+      "requiredActions": []
     },
     {
       "username": "aurora.operator",
@@ -236,14 +201,7 @@
       "firstName": "Aurora",
       "lastName": "Operator",
       "email": "aurora.operator@example.test",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "demo-aurora-op-pass",
-          "temporary": false
-        }
-      ]
+      "requiredActions": []
     },
     {
       "username": "aurora.officer",
@@ -252,14 +210,8 @@
       "firstName": "Aurora",
       "lastName": "Officer",
       "email": "aurora.officer@example.test",
-      "requiredActions": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "demo-aurora-off-pass",
-          "temporary": false
-        }
-      ]
+      "requiredActions": []
     }
-  ]
+  ],
+  "displayNameHtml": "<strong>Registro</strong> <span style=\"font-weight:400;opacity:.75\">Credential Authority</span>"
 }

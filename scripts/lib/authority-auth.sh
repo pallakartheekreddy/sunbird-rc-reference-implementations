@@ -65,11 +65,11 @@ authority_token() {
   [ -n "$client" ] || _auth_die "no client id for $key. Run scripts/bootstrap-authority-realm.sh first."
   [ -n "$secret" ] || _auth_die "no client secret for $key. Run scripts/bootstrap-authority-realm.sh first."
 
-  # The realm pins its own issuer, so AUTHORITY_TOKEN_URL names the CONTAINER network —
-  # which is correct for the issuing services and unreachable from a workstation. Scripts
-  # always go through the operator listener instead. The token is byte-for-byte the same
-  # either way, which is the whole point of pinning the issuer: where you ask does not
-  # change who the token says you are.
+  # Built from the operator listener rather than from AUTHORITY_TOKEN_URL, so this keeps
+  # working whichever host the realm's pin happens to name. The token is byte-for-byte the
+  # same either way, which is the whole point of pinning the issuer: where you ask does not
+  # change who the token says you are. (The pin now names this same listener, because the
+  # admin console signs operators in through a browser — see deploy/keycloak/README.md.)
   url="${OPS_URL:-http://127.0.0.1:${OPS_PORT:-8088}}"
   url="${url%/}/auth/realms/${AUTHORITY_REALM:-authority}/protocol/openid-connect/token"
 
