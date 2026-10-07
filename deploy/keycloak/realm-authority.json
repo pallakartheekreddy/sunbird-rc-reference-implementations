@@ -118,6 +118,148 @@
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
       "secret": ""
+    },
+    {
+      "clientId": "demo-brazil-console",
+      "name": "Authority operator console",
+      "description": "Public client for the operator console: authorization code with PKCE, no secret in a browser bundle. Password grant is off so nothing can bypass the browser flow. Redirect URIs are loopback only.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:8090/*",
+        "http://localhost:8090/*",
+        "http://127.0.0.1:8091/*",
+        "http://localhost:8091/*"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:8090",
+        "http://localhost:8090",
+        "http://127.0.0.1:8091",
+        "http://localhost:8091"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:8090/*##http://127.0.0.1:8091/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "brasil.admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Platform",
+      "email": "brasil.admin@example.test",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-admin-pass",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "horizonte.operator",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Horizonte",
+      "lastName": "Operator",
+      "email": "horizonte.operator@example.test",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-horizonte-op-pass",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "horizonte.officer",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Horizonte",
+      "lastName": "Officer",
+      "email": "horizonte.officer@example.test",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-horizonte-off-pass",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "atlantico.operator",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Atlantico",
+      "lastName": "Operator",
+      "email": "atlantico.operator@example.test",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-atlantico-op-pass",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "atlantico.officer",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Atlantico",
+      "lastName": "Officer",
+      "email": "atlantico.officer@example.test",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-atlantico-off-pass",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "aurora.operator",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Aurora",
+      "lastName": "Operator",
+      "email": "aurora.operator@example.test",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-aurora-op-pass",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "aurora.officer",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Aurora",
+      "lastName": "Officer",
+      "email": "aurora.officer@example.test",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-aurora-off-pass",
+          "temporary": false
+        }
+      ]
     }
   ]
 }

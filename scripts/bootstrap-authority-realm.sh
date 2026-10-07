@@ -89,6 +89,41 @@ admin_token="$(curl -fsS --max-time 15 -X POST \
   || die "could not authenticate to Keycloak as '$ADMIN_USER'"
 green "authenticated to the Keycloak admin API"
 
+say "2. Clients the realm file defines"
+# Keycloak imports a realm only when it does not already exist, so a client added to the
+# realm file later never appears on a deployment that has been up once. The loop below
+# handles the confidential clients because it needs their secrets; this handles every
+# client in the file, including PUBLIC ones that have no secret to store and so are absent
+# from the CLIENTS table entirely -- the operator console is one.
+ADMIN="$OPS/auth/admin/realms/$REALM"
+REALM_FILE="${REALM_FILE:-$ROOT/deploy/keycloak/realm-authority.json}"
+
+python3 -c '
+import json, sys
+for c in json.load(open(sys.argv[1])).get("clients", []):
+    print(c["clientId"])
+' "$REALM_FILE" | while read -r client_id; do
+  [ -n "$client_id" ] || continue
+  uuid="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
+    "$ADMIN/clients?clientId=$client_id" | json 'd[0]["id"] if d else ""')"
+  [ -n "$uuid" ] && continue
+  definition="$(python3 -c '
+import json, sys
+want = sys.argv[2]
+for c in json.load(open(sys.argv[1])).get("clients", []):
+    if c["clientId"] == want:
+        for k in ("id", "protocolMappers", "defaultClientScopes", "optionalClientScopes"):
+            c.pop(k, None)
+        print(json.dumps(c)); break
+else:
+    sys.exit("%s is not in %s" % (want, sys.argv[1]))
+' "$REALM_FILE" "$client_id")" || die "$client_id is not defined in $REALM_FILE"
+  curl -fsS --max-time 20 -X POST -H "authorization: Bearer $admin_token" \
+    -H 'content-type: application/json' -d "$definition" "$ADMIN/clients" >/dev/null \
+    || die "could not create client '$client_id'"
+  printf '  \033[2m·\033[0m %s  created (absent from the already-imported realm)\n' "$client_id"
+done
+
 say "2. Client credentials"
 ADMIN="$OPS/auth/admin/realms/$REALM"
 REALM_FILE="${REALM_FILE:-$ROOT/deploy/keycloak/realm-authority.json}"
@@ -161,6 +196,60 @@ PYEOF
   # is never printed — not here, not in an error, not in a summary.
   green "$client_id  subject $subject  secret stored"
 done <<< "$(printf '%s' "$CLIENTS" | sed '/^[[:space:]]*$/d')"
+
+say "3. Console sign-in accounts"
+# People, not service accounts. The realm file defines them, but Keycloak imports a realm
+# only when it does not already exist -- so on any deployment that has been up once, the
+# users in that file never appear. Same trap as the clients above. Create what is missing.
+#
+# Every field here is load-bearing, and the failure is misleading: a user without an EMAIL
+# cannot sign in at all, failing with "Account is not fully set up" while its own
+# requiredActions list is empty, because VERIFY_PROFILE demands one even though it is not a
+# default action. Found by probing a live realm, not by reading the realm file.
+#
+# Passwords are demo values from the realm file. They are not secrets, and they are not
+# written to deploy/.env: nothing here needs to read them back.
+users_json="$(python3 -c '
+import json, sys
+realm = json.load(open(sys.argv[1]))
+print(json.dumps(realm.get("users", [])))
+' "$REALM_FILE")"
+
+printf '%s' "$users_json" | python3 -c '
+import json, sys
+for u in json.load(sys.stdin):
+    pw = (u.get("credentials") or [{}])[0].get("value", "")
+    print("\t".join([u["username"], u.get("firstName",""), u.get("lastName",""),
+                     u.get("email",""), pw]))
+' | while IFS="$(printf '\t')" read -r username first last email password; do
+  [ -n "$username" ] || continue
+  uuid="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
+    "$ADMIN/users?username=$username&exact=true" | json 'd[0]["id"] if d else ""')"
+  if [ -z "$uuid" ]; then
+    curl -fsS --max-time 20 -X POST -H "authorization: Bearer $admin_token" \
+      -H 'content-type: application/json' "$ADMIN/users" \
+      -d "$(python3 -c '
+import json, sys
+u, f, l, e = sys.argv[1:5]
+print(json.dumps({"username": u, "enabled": True, "emailVerified": True,
+                  "firstName": f, "lastName": l, "email": e, "requiredActions": []}))
+' "$username" "$first" "$last" "$email")" >/dev/null \
+      || die "could not create user '$username'"
+    uuid="$(curl -fsS --max-time 15 -H "authorization: Bearer $admin_token" \
+      "$ADMIN/users?username=$username&exact=true" | json 'd[0]["id"] if d else ""')"
+    [ -n "$uuid" ] || die "created user '$username' but it cannot be read back"
+    created=" created"
+  else
+    created=""
+  fi
+  # Set the password every time. A run that creates the user and then fails before this
+  # leaves an account that exists and cannot sign in, which is worse than no account.
+  curl -fsS --max-time 20 -X PUT -H "authorization: Bearer $admin_token" \
+    -H 'content-type: application/json' "$ADMIN/users/$uuid/reset-password" \
+    -d "$(python3 -c 'import json,sys; print(json.dumps({"type":"password","value":sys.argv[1],"temporary":False}))' "$password")" \
+    >/dev/null || die "could not set the password for '$username'"
+  green "$username  subject $uuid$created"
+done
 
 say "3. Realm issuer and the bootstrap administrator"
 set_env AUTHORITY_OIDC_ISSUER "$ISSUER"
