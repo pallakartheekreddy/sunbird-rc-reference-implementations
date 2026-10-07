@@ -99,9 +99,15 @@ BIND_COLLEGE="$(binding_id "$AUTH_COLLEGE" CollegeRecord)"
 # Which column the CSV must key on. Read from the binding rather than assumed: it is
 # configurable, and a file keyed on the wrong column is rejected wholesale with a message
 # about a missing column, which reads like a malformed file rather than a misconfiguration.
-ROW_KEY="$(ok BOOTSTRAP GET "/registries/$BIND_SCHOOL" | pyget '
+#
+# The fallback is the key the bootstrap configures, NOT the service's own "rowKey" default.
+# The pinned authority-service image enforces csvRowKeyField but does not serialise it on
+# GET /registries/{id}, so an absent field here means "this image cannot tell me", not "none
+# is set". Guessing "rowKey" in that case produces a file the server rejects wholesale for a
+# missing column, which reads like a malformed fixture rather than a read-back that failed.
+ROW_KEY="${EDU_SCHOOL_CSV_ROW_KEY:-$(ok BOOTSTRAP GET "/registries/$BIND_SCHOOL" | pyget '
 import sys, json
-print(json.load(sys.stdin).get("csvRowKeyField") or "rowKey")')"
+print(json.load(sys.stdin).get("csvRowKeyField") or "schoolStudentId")')}"
 green "SchoolRecord binding resolved, CSV row key \"$ROW_KEY\""
 
 # --- fixtures --------------------------------------------------------------------------
