@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "StudentRecord": {
+      "$ref": "#/definitions/StudentRecord"
+    }
+  },
+  "required": [
+    "StudentRecord"
+  ],
+  "title": "StudentRecord",
+  "definitions": {
+    "StudentRecord": {
+      "$id": "#/properties/StudentRecord",
+      "type": "object",
+      "title": "StudentRecord",
+      "description": "The authoritative student record held by an institute. ONE schema is shared by all three institutes, which is the point of the multi-tenant demo rather than an economy: Horizonte, Atlantico and Aurora hold structurally identical records and are kept apart by osTenantId alone, so an isolation failure shows up as one institute reading another's rows rather than as a schema mismatch that would have masked it. studentId is unique WITHIN a tenant, never across the platform -- two institutes may legitimately both number a student 2026-0001.",
+      "required": [
+        "studentId",
+        "nationalId",
+        "fullName",
+        "programme",
+        "enrolmentStatus"
+      ],
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "title": "Student ID",
+          "description": "The institute's own roll number, e.g. HOR-2026-0001. Unique within the issuing institute's tenant and meaningless outside it. Issuer-side only: it is never a credential claim, so a verifier cannot learn which institute's roll a student sat on."
+        },
+        "nationalId": {
+          "type": "string",
+          "title": "National ID",
+          "description": "Issuer-side lookup only, e.g. NAT-70011234. Matched against the authenticated account's nationalId claim to decide whose credential may be issued. NEVER issued as a credential claim and never disclosed to a verifier."
+        },
+        "fullName": {
+          "type": "string",
+          "title": "Full name",
+          "description": "The student's name as the institute records it. Disclosable."
+        },
+        "programme": {
+          "type": "string",
+          "title": "Programme",
+          "description": "The course of study, e.g. Engenharia de Computacao. Free text rather than an enum: the three institutes teach different programmes, and constraining them to a shared vocabulary would be a modelling claim this demo does not need to make."
+        },
+        "enrolmentStatus": {
+          "type": "string",
+          "title": "Enrolment status",
+          "description": "Controlled vocabulary. Only COMPLETED and ENROLLED describe a student in good standing; the rest exist so that a genuine, fully verified credential can still produce a negative answer.",
+          "enum": [
+            "ENROLLED",
+            "COMPLETED",
+            "SUSPENDED",
+            "WITHDRAWN"
+          ]
+        },
+        "enrolmentYear": {
+          "type": "integer",
+          "title": "Enrolment year",
+          "minimum": 1950,
+          "maximum": 2100,
+          "description": "Year the student enrolled. Disclosable."
+        },
+        "percentage": {
+          "type": "number",
+          "title": "Percentage",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Marks percentage, 0 through 100. Compared against thresholds with integer arithmetic so a boundary is exact: 60 must pass a >=60 rule and 59.99 must not, regardless of how the value survives JSON. A value with finer precision than the schema permits is MALFORMED, not a business answer."
+        }
+      }
+    }
+  }
+}
