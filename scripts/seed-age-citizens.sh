@@ -135,6 +135,47 @@ seed AGE-000005 \
   '{"citizenId":"AGE-000005","name":"Leela Menon","dateOfBirth":"1996-02-29","gender":"Female","district":"Thrissur","state":"Kerala"}' \
   'AGE-000005 Leela Menon — leap-day date of birth, expects APPROVED'
 
+# One citizen inside each band the 13/16/18/21 thresholds create that the
+# records above do not already cover. Dates of birth are relative to today, and a
+# record is only rewritten once its holder has aged out of the band, so a rerun
+# normally changes nothing.
+#
+# seed_aged <citizenId> <age> <name> <gender> <label>
+seed_aged() {
+  local citizen_id="$1" age="$2" name="$3" gender="$4" label="$5" want existing current_age
+  want="$(python3 -c "
+from datetime import datetime, timedelta, timezone
+t = datetime.now(timezone.utc).date() - timedelta(days=182)
+try:
+    print(t.replace(year=t.year - $age).isoformat())
+except ValueError:  # 29 February in a non-leap target year
+    print(t.replace(year=t.year - $age, day=28).isoformat())
+")"
+  existing="$(fetch_record "$citizen_id")"
+  if [ -z "$existing" ]; then
+    seed "$citizen_id" \
+      "{\"citizenId\":\"$citizen_id\",\"name\":\"$name\",\"dateOfBirth\":\"$want\",\"gender\":\"$gender\"}" \
+      "$citizen_id $name — $label"
+    return 0
+  fi
+  current_age="$(printf '%s' "$existing" | python3 -c '
+import json, sys
+from datetime import datetime, timezone
+b = datetime.strptime(json.load(sys.stdin).get("dateOfBirth", ""), "%Y-%m-%d").date()
+t = datetime.now(timezone.utc).date()
+print(t.year - b.year - ((t.month, t.day) < (b.month, b.day)))
+' 2>/dev/null)"
+  if [ "$current_age" = "$age" ]; then
+    info "$citizen_id still aged $age"
+  else
+    refresh_boundary "$citizen_id" "$want" "$citizen_id (aged $age)"
+  fi
+}
+
+seed_aged AGE-000006 12 'Alex Moreau' 'Male'   'aged 12: under every threshold, expects DENIED at 13+'
+seed_aged AGE-000007 17 'Dana Okafor' 'Female' 'aged 17: APPROVED at 13+ and 16+, DENIED at 18+'
+seed_aged AGE-000008 19 'Sam Lindqvist' 'Male' 'aged 19: APPROVED at 18+, DENIED at 21+'
+
 TOTAL="$(curl -fsS -X POST "$REG/AgeCitizen/search" -H 'content-type: application/json' -d '{"filters":{}}' \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d if isinstance(d,list) else d.get("data",[])))')"
 printf '\n  %s AgeCitizen record(s) in the registry\n' "$TOTAL"

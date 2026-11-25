@@ -18,12 +18,14 @@ SPECS = {
         "id": "AgeVerificationCredential",
         "tags": ["age"],
         "description": (
-            "Issuer-derived age assertions. ageOver18/ageOver21 are computed by the issuer "
+            "Issuer-derived age assertions. ageOver13/16/18/21 are computed by the issuer "
             "from the authoritative AgeCitizen date of birth; name and dateOfBirth travel as "
             "selectively-disclosable claims the holder is expected NOT to reveal to an "
             "age-restricted service."
         ),
         "properties": {
+            "ageOver13": {"type": "boolean", "description": "Derived at issuance from dateOfBirth."},
+            "ageOver16": {"type": "boolean", "description": "Derived at issuance from dateOfBirth."},
             "ageOver18": {"type": "boolean", "description": "Derived at issuance from dateOfBirth."},
             "ageOver21": {"type": "boolean", "description": "Derived at issuance from dateOfBirth."},
             "name": {"type": "string"},

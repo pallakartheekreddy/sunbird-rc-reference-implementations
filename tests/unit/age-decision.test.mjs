@@ -11,6 +11,7 @@ import {
   AGE_CLAIM,
   DEFAULT_THRESHOLD,
   SUPPORTED_THRESHOLDS,
+  parseThreshold,
 } from '../../services/verifier/src/domains/age/index.mjs';
 
 test('APPROVED only for a boolean true', () => {
@@ -72,4 +73,17 @@ test('the decision reads the requested threshold, not ageOver18', () => {
 test('a 21+ check answered with only ageOver18 is refused, not approved', () => {
   // DCQL already stops a wallet answering with the wrong claim; this is the backstop.
   assert.throws(() => decideAge({ ageOver18: true }, 21), /ageOver21 is not a boolean/);
+});
+
+test('parseThreshold: absent means the default, digits mean that threshold', () => {
+  assert.equal(parseThreshold(null), 18);
+  assert.equal(parseThreshold(''), 18);
+  assert.equal(parseThreshold('21'), 21);
+  assert.equal(parseThreshold('13'), 13);
+});
+
+test('parseThreshold: anything else is rejected with a code the server maps to 400', () => {
+  for (const raw of ['17', '18.0', ' 18', '0x12', 'eighteen', '-18', '1e1']) {
+    assert.throws(() => parseThreshold(raw), (err) => err.code === 'UNSUPPORTED_THRESHOLD', raw);
+  }
 });

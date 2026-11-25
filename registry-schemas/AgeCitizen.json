@@ -30,7 +30,7 @@
           "type": "string",
           "format": "date",
           "title": "Date of birth",
-          "description": "ISO 8601 date. The authoritative input for ageOver18 / ageOver21."
+          "description": "ISO 8601 date. The authoritative input for ageOver13 / 16 / 18 / 21."
         },
         "gender": {
           "type": "string",

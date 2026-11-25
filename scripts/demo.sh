@@ -85,7 +85,7 @@ async function runCase({ label, citizenId, expect, mutate = {}, issuer }) {
       ? (ds) => ds.map((d) => (d.name === 'ageOver18' ? forgeDisclosureValue(d, true) : d))
       : undefined,
   });
-  step(5, `holder consents, discloses: ${disclosedClaimNames(presentation).join(', ')} (withheld: name, dateOfBirth, ageOver21)`);
+  step(5, `holder consents, discloses: ${disclosedClaimNames(presentation).join(', ')} (withheld: name, dateOfBirth, ageOver13, ageOver16, ageOver21)`);
 
   const submitted = await submitPresentation({
     base,

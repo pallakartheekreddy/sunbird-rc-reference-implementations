@@ -161,7 +161,7 @@ describe('issuer-side backend', () => {
     const offer = await issueOfferFor(base, MINOR);
     const serialised = JSON.stringify(offer);
     assert.equal(/Arjun|2012-08-30/.test(serialised), false, 'no identity values in the offer response');
-    assert.deepEqual(offer.claimNames, ['ageOver18', 'ageOver21', 'dateOfBirth', 'name']);
+    assert.deepEqual(offer.claimNames, ['ageOver13', 'ageOver16', 'ageOver18', 'ageOver21', 'dateOfBirth', 'name']);
   });
 
   test('an unknown citizen is refused', async () => {
@@ -214,7 +214,7 @@ describe('privacy and minimum disclosure', () => {
 
     // The credential genuinely carries the identity claims. Without this, a
     // "nothing leaked" result would only prove the credential was empty.
-    assert.deepEqual(disclosableClaims(credential), ['ageOver18', 'ageOver21', 'dateOfBirth', 'name']);
+    assert.deepEqual(disclosableClaims(credential), ['ageOver13', 'ageOver16', 'ageOver18', 'ageOver21', 'dateOfBirth', 'name']);
 
     const { presentation, result } = await present({ credential, holder });
     assert.equal(result.decision, 'APPROVED');

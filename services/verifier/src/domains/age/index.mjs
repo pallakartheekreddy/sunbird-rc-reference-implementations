@@ -39,6 +39,21 @@ export function ageClaim(threshold) {
 }
 
 /**
+ * Reads a threshold from a query-string value. Absent → the default.
+ * Only plain digits are read, so " 18", "18.0" or "1e1" can't be coerced
+ * into a threshold the caller didn't write.
+ *
+ * @param {string|null|undefined} raw
+ * @returns {number}
+ */
+export function parseThreshold(raw) {
+  if (raw === null || raw === undefined || raw === '') return DEFAULT_THRESHOLD;
+  const threshold = /^\d{1,3}$/.test(raw) ? Number(raw) : NaN;
+  ageClaim(threshold); // throws UNSUPPORTED_THRESHOLD
+  return threshold;
+}
+
+/**
  * Minimum disclosure for an age-restricted service: one derived assertion.
  *
  * @param {{vct: string, threshold?: number}} config

@@ -365,7 +365,7 @@ services:
       # the wallet sends can override it.
       KEYCLOAK_SUBJECT_CLAIM: citizenId
       # Where the claims come from once the subject is known: the citizen's own
-      # registry record, with ageOver18/ageOver21 derived from its date of birth.
+      # registry record, with ageOver13/16/18/21 derived from its date of birth.
       REGISTRY_BASE_URL: http://registry:8081
       REGISTRY_SUBJECT_ENTITY: AgeCitizen
       REGISTRY_SUBJECT_KEY: citizenId

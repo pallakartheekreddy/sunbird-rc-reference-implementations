@@ -20,7 +20,14 @@ import { resolveTrustPolicy } from './core/trust.mjs';
 import { credentialStatusChecker } from './core/credential-status.mjs';
 import { assertExactClaims } from './core/claim-policy.mjs';
 import { sessionStore } from './core/sessions.mjs';
-import { ageCredentialRequest, decideAge, AGE_CLAIM } from './domains/age/index.mjs';
+import {
+  ageCredentialRequest,
+  ageClaim,
+  decideAge,
+  parseThreshold,
+  DEFAULT_THRESHOLD,
+  SUPPORTED_THRESHOLDS,
+} from './domains/age/index.mjs';
 import {
   agricultureCredentialRequests,
   decideFarmCredit,
@@ -310,10 +317,12 @@ const agricultureRequestedClaims = () => {
 const USE_CASES = {
   age: {
     signer: 'age',
-    requests: () => [ageCredentialRequest({ vct: AGE_VCT })],
-    describe: () => `requesting ${AGE_CLAIM} only`,
-    requestedClaims: () => [AGE_CLAIM],
-    decide: (verified, session) => decideAge(verified[session.requests[0].id]),
+    // The threshold is chosen per session (POST /age/sessions?threshold=21) and
+    // recorded on it, so the decision reads the rule the request was built for.
+    requests: ({ threshold = DEFAULT_THRESHOLD } = {}) => [ageCredentialRequest({ vct: AGE_VCT, threshold })],
+    describe: ({ threshold = DEFAULT_THRESHOLD } = {}) => `requesting ${ageClaim(threshold)} only`,
+    requestedClaims: ({ threshold = DEFAULT_THRESHOLD } = {}) => [ageClaim(threshold)],
+    decide: (verified, session) => decideAge(verified[session.requests[0].id], session.threshold),
     respond: (outcome, { status, issuer, verified, session }) => ({
       state: 'decided',
       decision: outcome.decision,
@@ -322,11 +331,17 @@ const USE_CASES = {
       issuer,
       // The claim the holder chose to disclose, and nothing else. holderDid is
       // available upstream and deliberately not surfaced or logged.
-      disclosed: { [AGE_CLAIM]: verified[session.requests[0].id][AGE_CLAIM] },
+      threshold: session.threshold,
+      disclosed: {
+        [ageClaim(session.threshold)]: verified[session.requests[0].id][ageClaim(session.threshold)],
+      },
     }),
     policy: () => ({
       credentialType: AGE_VCT,
-      requestedClaims: [AGE_CLAIM],
+      // The default request. Any of `thresholds` may be asked for instead.
+      requestedClaims: [ageClaim(DEFAULT_THRESHOLD)],
+      thresholds: SUPPORTED_THRESHOLDS,
+      defaultThreshold: DEFAULT_THRESHOLD,
       protocolClaims: [ISSUER_CLAIM],
       trustedIssuers: trust.issuers.map((i) => i.name),
       approvedAlgorithms: algPolicy.approved,
@@ -442,11 +457,11 @@ const USE_CASE_PREFIX = `(?:/(?:${Object.keys(USE_CASES).join('|')}))?`;
 const CANCEL_PATH = new RegExp(`^${USE_CASE_PREFIX}/sessions/([A-Za-z0-9_-]+)/cancel$`);
 const READ_PATH = new RegExp(`^${USE_CASE_PREFIX}/sessions/([A-Za-z0-9_-]+)$`);
 
-async function createSession(useCaseName = 'age') {
+async function createSession(useCaseName = 'age', options = {}) {
   const useCase = USE_CASES[useCaseName];
   if (!useCase) throw new Error(`unknown use case ${useCaseName}`);
 
-  const requests = useCase.requests();
+  const requests = useCase.requests(options);
   // The purpose the wallet shows the holder before they consent, taken from the
   // use case rather than written here: the string a learner reads has to be the
   // same one the portal's /policy endpoint publishes, or the consent screen and
@@ -461,6 +476,8 @@ async function createSession(useCaseName = 'age') {
     // instance that created it, so reading it from the other one is a 404 the
     // page would render as "expired".
     signer: useCase.signer,
+    // Undefined for every use case but Age, which reads it in decide/respond.
+    threshold: options.threshold,
     // One entry per credential the request asks for. Age has exactly one, which
     // is why its behaviour is unchanged by this becoming a list.
     requests: requests.map((request) => ({
@@ -475,9 +492,9 @@ async function createSession(useCaseName = 'age') {
     qrData: vp.qr_data,
   });
 
-  console.log(`[verifier] session ${session.id} created (${useCaseName}); ${useCase.describe()}`);
+  console.log(`[verifier] session ${session.id} created (${useCaseName}); ${useCase.describe(options)}`);
 
-  const requestedClaims = useCase.requestedClaims();
+  const requestedClaims = useCase.requestedClaims(options);
 
   return {
     status: 201,
@@ -719,7 +736,14 @@ const server = createServer(async (req, res) => {
     }
     // POST /sessions stays the Age one, for the same reason.
     if (req.method === 'POST' && (path === '/sessions' || path === '/age/sessions')) {
-      const result = await createSession('age');
+      let threshold;
+      try {
+        threshold = parseThreshold(url.searchParams.get('threshold'));
+      } catch (err) {
+        if (err.code !== 'UNSUPPORTED_THRESHOLD') throw err;
+        return send(400, { error: 'unsupported_threshold', supported: SUPPORTED_THRESHOLDS });
+      }
+      const result = await createSession('age', { threshold });
       return send(result.status, result.body);
     }
     if (req.method === 'POST' && path.endsWith('/sessions')) {
