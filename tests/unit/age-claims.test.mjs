@@ -8,6 +8,7 @@ import {
   completedYears,
   parseCalendarDate,
   deriveAgeClaims,
+  AGE_THRESHOLDS,
 } from '../../services/age-issuer/src/age-claims.mjs';
 
 const on = (iso) => parseCalendarDate(iso);
@@ -90,5 +91,15 @@ test('deriveAgeClaims rejects a future date of birth', () => {
   assert.throws(
     () => deriveAgeClaims({ citizenId: 'AGE-000010', dateOfBirth: '2030-01-01' }, new Date('2026-08-24T00:00:00Z')),
     /future dateOfBirth/,
+  );
+});
+
+test('deriveAgeClaims asserts every published threshold: 13, 16, 18 and 21', () => {
+  assert.deepEqual(AGE_THRESHOLDS, [13, 16, 18, 21]);
+  // Aged 14 on the frozen date: over 13 only.
+  const claims = deriveAgeClaims({ citizenId: 'X', dateOfBirth: '2012-01-01' }, new Date('2026-08-24T00:00:00Z'));
+  assert.deepEqual(
+    [claims.ageOver13, claims.ageOver16, claims.ageOver18, claims.ageOver21],
+    [true, false, false, false],
   );
 });
