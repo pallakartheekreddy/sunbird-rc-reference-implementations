@@ -35,6 +35,14 @@ const NAMES = {
   'education-masters': "Master's Admissions",
   'education-job': 'Interview Shortlisting',
 };
+// The Age build's threshold is fixed at build time too: a real age-restricted
+// service has one legal minimum, not a menu. Must be one the verifier supports.
+const AGE_THRESHOLD = Number(process.env.VERIFIER_AGE_THRESHOLD ?? 18);
+if (![13, 16, 18, 21].includes(AGE_THRESHOLD)) {
+  throw new Error(
+    `VERIFIER_AGE_THRESHOLD must be one of 13, 16, 18, 21, got '${process.env.VERIFIER_AGE_THRESHOLD}'`,
+  );
+}
 if (!NAMES[USE_CASE]) {
   throw new Error(
     `VERIFIER_USE_CASE must be one of ${Object.keys(NAMES).join(', ')}, got '${USE_CASE}'`,
@@ -61,6 +69,8 @@ export default {
       verifierBaseUrl: process.env.VERIFIER_BASE_URL ?? 'http://localhost',
       // The one channel this build serves. Read once, at start-up.
       useCase: USE_CASE,
+      // Only read by the Age channel.
+      ageThreshold: AGE_THRESHOLD,
     },
   },
 };

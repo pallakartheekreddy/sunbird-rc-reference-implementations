@@ -61,6 +61,8 @@ const POLL_MS = 1500;
  * than one that will not start.
  */
 const USE_CASE_NAME = Constants.expoConfig?.extra?.useCase ?? 'age';
+// Baked in by VERIFIER_AGE_THRESHOLD (see app.config.js). The service validates it.
+const AGE_THRESHOLD = Constants.expoConfig?.extra?.ageThreshold ?? 18;
 
 /**
  * What NEITHER Education portal ever asks for.
@@ -91,10 +93,10 @@ const EDUCATION_WITHHELD = [
 const USE_CASES = {
   age: {
     api: `${BASE}/api/verifier`,
+    sessionQuery: `?threshold=${AGE_THRESHOLD}`,
     eyebrow: 'AGE-RESTRICTED SERVICE',
-    title: 'Prove you are over 18',
-    lede:
-      'This app asks your wallet for one thing only — whether you are over 18. Not your date of birth, not your name.',
+    title: `Prove you are over ${AGE_THRESHOLD}`,
+    lede: `This app asks your wallet for one thing only — whether you are over ${AGE_THRESHOLD}. Not your date of birth, not your name.`,
     startLabel: 'Start age check',
     cancelLabel: 'Cancel this check',
     againLabel: 'Run another check',
@@ -314,7 +316,7 @@ export default function App() {
     // Pinned for the whole run: the timers below must keep polling the namespace
     // this session was created in, even if the picker is touched afterwards.
     try {
-      const res = await fetch(`${api.current}/sessions`, { method: 'POST' });
+      const res = await fetch(`${api.current}/sessions${useCase.sessionQuery ?? ''}`, { method: 'POST' });
       if (res.status !== 201) throw new Error(`the verifier service answered ${res.status}`);
       const body = await res.json();
       session.current = body.sessionId;

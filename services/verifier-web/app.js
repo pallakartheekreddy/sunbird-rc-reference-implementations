@@ -11,7 +11,7 @@ const API = '/api/verifier';
 const POLL_INTERVAL_MS = 1500;
 
 const el = (id) => document.getElementById(id);
-const state = { sessionId: null, timer: null, countdown: null, deadline: null };
+const state = { sessionId: null, timer: null, countdown: null, deadline: null, thresholds: [18], policy: null };
 
 /** Everything from the server is rendered as text, never as markup. */
 const text = (value) => document.createTextNode(String(value));
@@ -52,7 +52,11 @@ function claimsNode(disclosed) {
     chip.appendChild(text(`${name} = ${value}`));
     wrap.appendChild(chip);
   }
-  for (const withheld of ['date of birth', 'name', 'ageOver21']) {
+  // Everything the credential carries that this check did not ask for.
+  const otherThresholds = state.thresholds
+    .map((t) => `ageOver${t}`)
+    .filter((claim) => !(claim in disclosed));
+  for (const withheld of ['date of birth', 'name', ...otherThresholds]) {
     const chip = document.createElement('span');
     chip.className = 'chip withheld';
     chip.appendChild(text(withheld));
@@ -147,9 +151,13 @@ el('cancel').addEventListener('click', async () => {
 
 async function start() {
   el('start').disabled = true;
-  const { status, body } = await api('/sessions', { method: 'POST' });
+  el('threshold').disabled = true;
+  const { status, body } = await api(`/sessions?threshold=${encodeURIComponent(el('threshold').value)}`, {
+    method: 'POST',
+  });
   if (status !== 201) {
     el('start').disabled = false;
+    el('threshold').disabled = false;
     return showResult({ reason: body.error || 'Could not start an age check.' });
   }
 
@@ -169,6 +177,7 @@ async function start() {
   el('cancel').hidden = false;
   el('hint').hidden = false;
   el('start').hidden = true;
+  el('threshold-wrap').hidden = true;
   el('request-eyebrow').textContent = 'Scan with your wallet';
 
   state.deadline = Date.now() + body.expiresInSeconds * 1000;
@@ -184,15 +193,48 @@ async function start() {
 async function showPolicy() {
   const { body } = await api('/policy');
   if (!body.requestedClaims) return;
+  state.policy = body;
+  setupThresholds(body);
+  renderPolicy();
+}
+
+/**
+ * Fills the minimum-age choice from the service's published thresholds and
+ * preselects ?age= when it names one of them. An unsupported ?age= is ignored
+ * rather than guessed at; the service would refuse it anyway.
+ */
+function setupThresholds({ thresholds = [18], defaultThreshold = 18 }) {
+  state.thresholds = thresholds;
+  const wanted = Number(new URLSearchParams(window.location.search).get('age'));
+  const chosen = thresholds.includes(wanted) ? wanted : defaultThreshold;
+  const select = el('threshold');
+  select.textContent = '';
+  for (const t of thresholds) {
+    const option = document.createElement('option');
+    option.value = String(t);
+    option.textContent = `${t}+`;
+    option.selected = t === chosen;
+    select.appendChild(option);
+  }
+  showThreshold();
+}
+
+function showThreshold() {
+  for (const node of document.querySelectorAll('.age-threshold')) node.textContent = el('threshold').value;
+  document.title = `Age check ${el('threshold').value}+ — Sunbird RC showcase`;
+  if (state.policy) renderPolicy();
+}
+
+/** Shows what this verifier asks for, read from the service rather than hardcoded. */
+function renderPolicy() {
+  const body = state.policy;
   const wrap = el('policy');
   wrap.textContent = '';
   wrap.appendChild(text('Requests'));
-  for (const claim of body.requestedClaims) {
-    const chip = document.createElement('span');
-    chip.className = 'chip ask';
-    chip.appendChild(text(claim));
-    wrap.appendChild(chip);
-  }
+  const chip = document.createElement('span');
+  chip.className = 'chip ask';
+  chip.appendChild(text(`ageOver${el('threshold').value}`));
+  wrap.appendChild(chip);
   wrap.appendChild(text('· accepts'));
   for (const issuer of body.trustedIssuers || []) {
     const chip = document.createElement('span');
@@ -203,5 +245,6 @@ async function showPolicy() {
 }
 
 el('start').addEventListener('click', start);
+el('threshold').addEventListener('change', showThreshold);
 el('again').addEventListener('click', () => window.location.reload());
 showPolicy();

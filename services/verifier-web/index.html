@@ -17,16 +17,25 @@
           <span class="divider" aria-hidden="true"></span>
           <span class="service">Age-restricted service</span>
         </span>
-        <h1>Prove you are over 18</h1>
+        <h1>Prove you are over <span class="age-threshold">18</span></h1>
         <p class="lede">
           Scan the code with your wallet. You will be asked to share
-          <strong>one thing only</strong> — whether you are over 18. Not your date of birth,
-          not your name.
+          <strong>one thing only</strong> — whether you are over
+          <span class="age-threshold">18</span>. Not your date of birth, not your name.
         </p>
       </header>
 
       <section class="panel" id="panel-request">
         <p class="eyebrow" id="request-eyebrow">Start the check</p>
+        <!-- The minimum age this service requires. A real service has one fixed
+             rule; the choice is here so one page can demonstrate every threshold.
+             ?age=21 preselects it. Options come from the service's /policy. -->
+        <label class="threshold" id="threshold-wrap">
+          Minimum age
+          <select id="threshold">
+            <option value="18" selected>18+</option>
+          </select>
+        </label>
         <button id="start" class="primary">Start age check</button>
         <div id="qr" class="qr" hidden></div>
         <!-- Same-device path. Opening this page ON the phone and tapping here
