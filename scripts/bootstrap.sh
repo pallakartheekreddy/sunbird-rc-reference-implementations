@@ -357,8 +357,16 @@ for c in json.load(sys.stdin):
     if c.get("name") != want_name:
         continue
     other_author = c.get("author") != keep_author
-    other_formats = keep_formats is not None and sorted(c.get("formats") or []) != keep_formats
-    if other_author or other_formats:
+    # Same issuer, overlapping but different formats: an earlier publication of
+    # this credential (e.g. one schema for both formats, before ldp_vc got its
+    # own). Disjoint formats are a sibling schema of the same credential: kept.
+    formats = sorted(c.get("formats") or [])
+    superseded = (
+        keep_formats is not None
+        and formats != keep_formats
+        and bool(set(formats) & set(keep_formats))
+    )
+    if other_author or superseded:
         print("%s|%s|%s" % (c.get("schemaId", ""), c.get("version", "1.0.0"), c.get("author", "")))
 PY
 
@@ -415,6 +423,8 @@ create_schema() {
 
 SPECS="$ROOT/scripts/credential-specs.py"
 create_schema "$(python3 "$SPECS" age "$AGE_ISSUER_DID" "$VCT_SLUG")"
+# The same credential as ldp_vc (Inji Wallet, Inji SDK apps): age answers only.
+create_schema "$(python3 "$SPECS" age-w3c "$AGE_ISSUER_DID" "$VCT_SLUG")"
 
 # Iteration 02. Two credentials, two authors: the schema `author` DID is what
 # becomes the credential's `iss`, so it is what makes these two INDEPENDENT

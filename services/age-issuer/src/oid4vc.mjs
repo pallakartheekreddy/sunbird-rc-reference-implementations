@@ -76,7 +76,14 @@ export function oid4vcClient({ oid4vcBaseUrl, schemaBaseUrl }) {
       const cfg = candidates[0];
       const configurationId =
         (cfg.formats || []).length > 1 ? `${cfg.schemaId}_${format}` : cfg.schemaId;
-      return { configurationId, vct: cfg.vct, author: cfg.author, schemaId: cfg.schemaId };
+      return {
+        configurationId,
+        vct: cfg.vct,
+        author: cfg.author,
+        schemaId: cfg.schemaId,
+        // What the schema lets this credential carry; the offer is narrowed to it.
+        claimNames: Object.keys(cfg.schema?.properties || {}),
+      };
     },
 
     /**

@@ -17,3 +17,22 @@ export function offerFormat(requested, fallback) {
   }
   return requested;
 }
+
+/**
+ * The derived claims narrowed to what the credential's schema declares.
+ *
+ * The age credential is published as two schemas: SD-JWT (age answers plus
+ * name and date of birth as withheld, selectively-disclosable claims) and
+ * ldp_vc (age answers only, because a W3C ldp_vc is presented whole). Issuing
+ * by the schema keeps the ldp_vc minimal without the issuer knowing why.
+ *
+ * @param {Record<string, unknown>} claims derived from the registry record
+ * @param {string[]|undefined|null} schemaProperties
+ * @returns {Record<string, unknown>}
+ */
+export function claimsForSchema(claims, schemaProperties) {
+  if (!Array.isArray(schemaProperties) || schemaProperties.length === 0) {
+    throw new Error('credential schema declares no claims; refusing to issue');
+  }
+  return Object.fromEntries(Object.entries(claims).filter(([name]) => schemaProperties.includes(name)));
+}

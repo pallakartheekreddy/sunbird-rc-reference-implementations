@@ -20,7 +20,7 @@ import { createServer } from 'node:http';
 import { deriveAgeClaims } from './age-claims.mjs';
 import { registryClient } from './registry.mjs';
 import { oid4vcClient } from './oid4vc.mjs';
-import { offerFormat } from './formats.mjs';
+import { offerFormat, claimsForSchema } from './formats.mjs';
 
 const PORT = Number(process.env.PORT || 4200);
 const CREDENTIAL_NAME = process.env.CREDENTIAL_NAME || 'Age Verification Credential';
@@ -48,13 +48,17 @@ async function issueOffer(citizenId, format = CREDENTIAL_FORMAT) {
 
   // Derived here, from the authoritative record. Nothing a caller sends can
   // influence the age assertion — the request body carries an identifier only.
-  const claims = deriveAgeClaims(record);
+  const derived = deriveAgeClaims(record);
 
   const config = await oid4vc.resolveCredentialConfig({
     name: CREDENTIAL_NAME,
     format,
     issuerDid: ISSUER_DID || undefined,
   });
+
+  // Only what this format's schema declares: the ldp_vc schema has no name or
+  // date of birth, because an ldp_vc is presented whole.
+  const claims = claimsForSchema(derived, config.claimNames);
 
   const offer = await oid4vc.createOffer({
     configurationId: config.configurationId,

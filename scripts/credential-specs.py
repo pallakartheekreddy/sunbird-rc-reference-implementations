@@ -6,7 +6,7 @@ claim descriptions is far more text than a shell script can carry legibly, and
 bash 3.2 (still the default on macOS) cannot parse a heredoc inside $(...) in a
 function body at all.
 
-Usage: credential-specs.py <age|farmer|land|school|college|university> <author-did> <vct-slug>
+Usage: credential-specs.py <age|age-w3c|farmer|land|school|college|university> <author-did> <vct-slug>
 Prints one JSON spec for scripts/bootstrap.sh's create_schema.
 """
 import json
@@ -30,11 +30,30 @@ SPECS = {
             "dateOfBirth": {"type": "string", "format": "date"},
         },
         "required": ["ageOver18"],
-        # SD-JWT VC for OpenID4VP 1.0 wallets (Paradym, walt.id); W3C ldp_vc for
-        # Inji Wallet and apps embedding the Inji SDK, which cannot hold SD-JWT.
-        # ldp_vc has no selective disclosure: the verifier still RECEIVES only
-        # the claims its Presentation Exchange request asks for.
-        "formats": ["vc+sd-jwt", "ldp_vc"],
+        # SD-JWT VC, for OpenID4VP 1.0 wallets (Paradym, walt.id). The ldp_vc
+        # form for Inji-based wallets is a separate schema ("age-w3c") because
+        # it must not carry name or date of birth.
+        "formats": ["vc+sd-jwt"],
+    },
+    # The same credential as W3C ldp_vc, for Inji Wallet and apps embedding the
+    # Inji SDK. Same name and issuer, so wallets and verifiers see one credential
+    # type; a separate schema because ldp_vc has no selective disclosure: the
+    # wallet presents the whole credential, so it carries the age answers only.
+    "age-w3c": {
+        "name": "Age Verification Credential",
+        "id": "AgeVerificationCredentialW3C",
+        "tags": ["age"],
+        "description": (
+            "Issuer-derived age assertions as a W3C ldp_vc. Carries only ageOver16 and "
+            "ageOver18: an ldp_vc is presented whole, so name and date of birth are left "
+            "out rather than withheld."
+        ),
+        "properties": {
+            "ageOver16": {"type": "boolean", "description": "Derived at issuance from dateOfBirth."},
+            "ageOver18": {"type": "boolean", "description": "Derived at issuance from dateOfBirth."},
+        },
+        "required": ["ageOver16", "ageOver18"],
+        "formats": ["ldp_vc"],
     },
     "farmer": {
         "name": "Farmer Identity Credential",
