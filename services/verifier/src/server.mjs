@@ -88,7 +88,8 @@ const PORT = Number(process.env.PORT || 4300);
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost').replace(/\/+$/, '');
 const AGE_VCT = process.env.AGE_VCT || `${PUBLIC_URL}/vct/age-verification-credential`;
 // The W3C type of the same credential issued as ldp_vc, for Inji-based wallets.
-const AGE_CREDENTIAL_TYPE = process.env.AGE_CREDENTIAL_TYPE || 'AgeVerificationCredential';
+// oid4vc-service types an ldp_vc ['VerifiableCredential', <schema name>].
+const AGE_CREDENTIAL_TYPE = process.env.AGE_CREDENTIAL_TYPE || 'Age Verification Credential';
 // The credential's name in the trust allowlist, to publish only the issuers
 // that can vouch for age.
 const AGE_CREDENTIAL_NAME = process.env.AGE_CREDENTIAL_NAME || 'Age Verification Credential';

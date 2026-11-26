@@ -30,6 +30,11 @@ SPECS = {
             "dateOfBirth": {"type": "string", "format": "date"},
         },
         "required": ["ageOver18"],
+        # SD-JWT VC for OpenID4VP 1.0 wallets (Paradym, walt.id); W3C ldp_vc for
+        # Inji Wallet and apps embedding the Inji SDK, which cannot hold SD-JWT.
+        # ldp_vc has no selective disclosure: the verifier still RECEIVES only
+        # the claims its Presentation Exchange request asks for.
+        "formats": ["vc+sd-jwt", "ldp_vc"],
     },
     "farmer": {
         "name": "Farmer Identity Credential",

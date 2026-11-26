@@ -20,6 +20,7 @@ import { createServer } from 'node:http';
 import { deriveAgeClaims } from './age-claims.mjs';
 import { registryClient } from './registry.mjs';
 import { oid4vcClient } from './oid4vc.mjs';
+import { offerFormat } from './formats.mjs';
 
 const PORT = Number(process.env.PORT || 4200);
 const CREDENTIAL_NAME = process.env.CREDENTIAL_NAME || 'Age Verification Credential';
@@ -39,7 +40,7 @@ const oid4vc = oid4vcClient({
  */
 const summarise = (claims) => Object.keys(claims).sort().join(',');
 
-async function issueOffer(citizenId) {
+async function issueOffer(citizenId, format = CREDENTIAL_FORMAT) {
   const record = await registry.findCitizen(citizenId);
   if (!record) {
     return { status: 404, body: { error: 'unknown_citizen', citizenId } };
@@ -51,13 +52,13 @@ async function issueOffer(citizenId) {
 
   const config = await oid4vc.resolveCredentialConfig({
     name: CREDENTIAL_NAME,
-    format: CREDENTIAL_FORMAT,
+    format,
     issuerDid: ISSUER_DID || undefined,
   });
 
   const offer = await oid4vc.createOffer({
     configurationId: config.configurationId,
-    format: CREDENTIAL_FORMAT,
+    format,
     claims,
   });
 
@@ -75,6 +76,7 @@ async function issueOffer(citizenId) {
       qrData: offer.qr_data,
       credentialOfferUri: offer.credential_offer_uri,
       credentialConfigurationId: config.configurationId,
+      format,
       vct: config.vct,
       // Names only. Returning the values here would hand the caller the very
       // claims the credential exists to keep in the holder's control.
@@ -105,7 +107,8 @@ const routes = {
   'POST /offers': async (body) => {
     const citizenId = String(body?.citizenId || '').trim();
     if (!citizenId) return { status: 400, body: { error: 'citizenId is required' } };
-    return issueOffer(citizenId);
+    // Optional: 'ldp_vc' for Inji-based wallets; defaults to CREDENTIAL_FORMAT.
+    return issueOffer(citizenId, offerFormat(body?.format, CREDENTIAL_FORMAT));
   },
 };
 

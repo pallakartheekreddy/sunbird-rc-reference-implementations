@@ -20,8 +20,13 @@ export const LDP_VC_FORMAT = 'ldp_vc';
  */
 const LDP_PROOF_TYPES = ['Ed25519Signature2020'];
 
-/** A credential type name the wallet will use as a regex pattern: identifier characters only. */
-const PLAIN_TYPE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+/**
+ * A credential type name the wallet will use as a regex pattern: letters,
+ * digits, spaces, `_` and `-` only, so it matches literally. Spaces because
+ * oid4vc-service types an ldp_vc with its schema NAME ("Age Verification
+ * Credential").
+ */
+const PLAIN_TYPE = /^[A-Za-z][A-Za-z0-9 _-]*$/;
 
 /**
  * @param {Array<{id: string, credentialType?: string, claims: string[]}>} requests

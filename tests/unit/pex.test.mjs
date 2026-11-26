@@ -110,3 +110,14 @@ test('pexClaims passes extra disclosures through, for the exact-disclosure check
   );
   assert.equal(assertExactClaims(expectedClaimNames(ageRequest), claims).ok, false);
 });
+
+test('accepts the type name core issues for ldp_vc: the schema name, spaces included', () => {
+  // oid4vc-service issues ldp_vc as type ['VerifiableCredential', <schema name>],
+  // and the age schema is named "Age Verification Credential".
+  const request = { ...ageRequest, credentialType: 'Age Verification Credential' };
+  const typeField = fieldsOf(buildPresentationDefinition([request])).find((f) => f.path[0] === '$.type');
+  assert.equal(typeField.filter.pattern, 'Age Verification Credential');
+  const claims = pexClaims({ type: ['VerifiableCredential', 'Age Verification Credential'], ageOver18: true, issuer: 'did:x' }, request);
+  assert.equal(claims.iss, 'did:x');
+});
+

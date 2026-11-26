@@ -323,7 +323,8 @@ print(json.dumps({
     # appears in issuer metadata.
     "oid4vciConfig": {
         "oid4vciEnabled": True,
-        "oid4vciFormats": ["vc+sd-jwt"],
+        # Per credential; SD-JWT only unless the spec says otherwise.
+        "oid4vciFormats": spec.get("formats", ["vc+sd-jwt"]),
         "vct": spec["vct"],
         # `locale` is REQUIRED on a display entry. Without it a wallet fetching
         # the SD-JWT VC Type Metadata fails to parse it and shows only
@@ -336,18 +337,28 @@ SPEC
 cat > "$FIND_PY" <<'PY'
 import json, sys
 want_name, want_author = sys.argv[1], sys.argv[2]
+want_formats = sorted(json.loads(sys.argv[3])) if len(sys.argv) > 3 else None
 for c in json.load(sys.stdin):
     if c.get("name") == want_name and c.get("author") == want_author:
-        print(c.get("schemaId", ""))
-        break
+        # Same name and author but a different set of formats is NOT present:
+        # the published schema cannot be issued in the format now wanted.
+        if want_formats is None or sorted(c.get("formats") or []) == want_formats:
+            print(c.get("schemaId", ""))
+            break
 PY
 
-# Every PUBLISHED schema sharing this name but authored by a DIFFERENT did.
+# Every PUBLISHED schema sharing this name but authored by a DIFFERENT did, or
+# by the same did with a different set of formats (superseded by a re-publish).
 cat > "$STALE_PY" <<'PY'
 import json, sys
 want_name, keep_author = sys.argv[1], sys.argv[2]
+keep_formats = sorted(json.loads(sys.argv[3])) if len(sys.argv) > 3 else None
 for c in json.load(sys.stdin):
-    if c.get("name") == want_name and c.get("author") != keep_author:
+    if c.get("name") != want_name:
+        continue
+    other_author = c.get("author") != keep_author
+    other_formats = keep_formats is not None and sorted(c.get("formats") or []) != keep_formats
+    if other_author or other_formats:
         print("%s|%s|%s" % (c.get("schemaId", ""), c.get("version", "1.0.0"), c.get("author", "")))
 PY
 
@@ -360,14 +371,14 @@ PY
 # service's own mechanism for this, and is reversible with
 # PUT /credential-schema/publish/{id}/{ver}.
 deprecate_stale_schemas() {
-  local name="$1" keep_author="$2" stale sid ver author
+  local name="$1" keep_author="$2" keep_formats="${3:-}" stale sid ver author
   stale="$(curl -fsS "$BASE/credential-schema/oid4vci-configs" \
-    | python3 "$STALE_PY" "$name" "$keep_author" 2>/dev/null)" || return 0
+    | python3 "$STALE_PY" "$name" "$keep_author" ${keep_formats:+"$keep_formats"} 2>/dev/null)" || return 0
   [ -n "$stale" ] || return 0
   while IFS='|' read -r sid ver author; do
     [ -n "$sid" ] || continue
     if curl -fsS -X PUT "$BASE/credential-schema/deprecate/$sid/$ver" -o /dev/null 2>/dev/null; then
-      warn "$name: deprecated a stale copy authored by ${author##*:}"
+      warn "$name: deprecated a superseded copy (author ${author##*:})"
     else
       warn "$name: could NOT deprecate the stale copy authored by ${author##*:}"
     fi
@@ -379,15 +390,19 @@ EOF
 # create_schema <spec-json>. The spec carries name, id, author, vct, tags,
 # description, properties and required - see SCHEMA_PY above.
 create_schema() {
-  local spec="$1" name author existing body resp
+  local spec="$1" name author formats existing body resp
   name="$(printf '%s' "$spec" | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
   author="$(printf '%s' "$spec" | python3 -c 'import json,sys; print(json.load(sys.stdin)["author"])')"
-  existing="$(curl -fsS "$BASE/credential-schema/oid4vci-configs" | python3 "$FIND_PY" "$name" "$author")"
+  formats="$(printf '%s' "$spec" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin).get("formats", ["vc+sd-jwt"])))')"
+  existing="$(curl -fsS "$BASE/credential-schema/oid4vci-configs" | python3 "$FIND_PY" "$name" "$author" "$formats")"
   if [ -n "$existing" ]; then
     green "$name (author ${author##*:}) already present"
-    deprecate_stale_schemas "$name" "$author"
+    deprecate_stale_schemas "$name" "$author" "$formats"
     return 0
   fi
+  # Superseded copies (another author, or this author with other formats) go
+  # BEFORE publishing, so name-based resolution never sees two at once.
+  deprecate_stale_schemas "$name" "$author" "$formats"
   body="$(python3 "$SCHEMA_PY" "$spec")"
   # POST to /credential-schema — the controller is mounted at that prefix and
   # serves POST at its root.
