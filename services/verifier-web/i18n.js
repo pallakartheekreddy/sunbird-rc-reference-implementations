@@ -14,6 +14,9 @@ export const MESSAGES = {
   en: {
     'app.title': 'Age check',
     'app.service': 'Age-restricted service',
+    'headline': 'Prove you are over {t}',
+    'demo': 'Demo',
+    'state.idle': 'Ready',
     'lede': 'Your wallet shares one answer only: whether you are over {t}. Not your date of birth, not your name.',
     'rule.label': 'Minimum age',
     'wallet.label': 'Your wallet',
@@ -76,6 +79,9 @@ export const MESSAGES = {
   fr: {
     'app.title': "Vérification de l'âge",
     'app.service': "Service soumis à une limite d'âge",
+    'headline': 'Prouvez que vous avez plus de {t} ans',
+    'demo': 'Démo',
+    'state.idle': 'Prêt',
     'lede': "Votre portefeuille ne partage qu'une seule réponse : avez-vous plus de {t} ans. Ni votre date de naissance, ni votre nom.",
     'rule.label': 'Âge minimum',
     'wallet.label': 'Votre portefeuille',
@@ -138,6 +144,9 @@ export const MESSAGES = {
   pt: {
     'app.title': 'Verificação de idade',
     'app.service': 'Serviço com restrição de idade',
+    'headline': 'Comprove que tem mais de {t} anos',
+    'demo': 'Demonstração',
+    'state.idle': 'Pronto',
     'lede': 'Sua carteira compartilha uma única resposta: se você tem mais de {t} anos. Nem sua data de nascimento, nem seu nome.',
     'rule.label': 'Idade mínima',
     'wallet.label': 'Sua carteira',
@@ -200,6 +209,9 @@ export const MESSAGES = {
   es: {
     'app.title': 'Verificación de edad',
     'app.service': 'Servicio con restricción de edad',
+    'headline': 'Demuestra que eres mayor de {t}',
+    'demo': 'Demo',
+    'state.idle': 'Listo',
     'lede': 'Tu billetera comparte una sola respuesta: si tienes más de {t} años. Ni tu fecha de nacimiento, ni tu nombre.',
     'rule.label': 'Edad mínima',
     'wallet.label': 'Tu billetera',

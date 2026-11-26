@@ -4,92 +4,132 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>Age check — Sunbird RC showcase</title>
-    <link rel="preload" href="/assets/fonts/rubik-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/styles.css" />
+    <title>Age check</title>
+    <link rel="stylesheet" href="age.css" />
+    <script type="module" src="app.js"></script>
   </head>
   <body>
-    <main class="shell">
-      <header>
-        <span class="brand">
-          <span class="mark" aria-hidden="true">◦</span>
-          sunbird
-          <span class="divider" aria-hidden="true"></span>
-          <span class="service">Age-restricted service</span>
-        </span>
-        <h1>Prove you are over <span class="age-threshold">18</span></h1>
-        <p class="lede">
-          Scan the code with your wallet. You will be asked to share
-          <strong>one thing only</strong> — whether you are over
-          <span class="age-threshold">18</span>. Not your date of birth, not your name.
-        </p>
-      </header>
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="service-name" data-i18n="app.service">Age-restricted service</span>
+        <span class="tag" data-i18n="demo">Demo</span>
+      </div>
+      <!-- Four languages; ?lang= preselects one, the choice is remembered. -->
+      <div class="segmented small" id="lang" role="group" aria-label="Language"></div>
+    </header>
 
-      <section class="panel" id="panel-request">
-        <p class="eyebrow" id="request-eyebrow">Start the check</p>
-        <!-- The minimum age this service requires. A real service has one fixed
-             rule; the choice is here so one page can demonstrate every threshold.
-             ?age=16 preselects it. Options come from the service's /policy. -->
-        <label class="threshold" id="threshold-wrap">
-          Minimum age
-          <select id="threshold">
-            <option value="18" selected>18+</option>
-          </select>
-        </label>
-        <!-- Which wallet family the holder uses. The request is built before any
-             wallet sees it, and Inji-based wallets (Inji Wallet, apps embedding
-             the Inji SDK) answer Presentation Exchange over ldp_vc rather than
-             DCQL over SD-JWT. ?wallet=inji preselects it. Hidden unless the
-             service's /policy lists more than one. -->
-        <label class="threshold" id="wallet-wrap" hidden>
-          Wallet
-          <select id="wallet">
-            <option value="openid" selected>OpenID wallet (Paradym, walt.id)</option>
-            <option value="inji">Inji Wallet / Inji SDK app</option>
-          </select>
-        </label>
-        <button id="start" class="primary">Start age check</button>
-        <div id="qr" class="qr" hidden></div>
-        <!-- Same-device path. Opening this page ON the phone and tapping here
-             hands the request straight to the wallet through its openid4vp://
-             handler, with no camera in the loop - which is the same-device
-             journey the charter asks for, not merely a fallback for a QR that
-             will not scan. Hidden until a session exists. -->
-        <a id="open-wallet" class="open-wallet" hidden>Open in wallet</a>
-        <!-- Cross-device scanning is the hard case: ~200 characters of payload
-             becomes a 53x53 symbol, and a budget phone camera pointed at a
-             backlit laptop panel needs bigger modules than the layout wants.
-             This trades page composition for module pitch on demand. -->
-        <button id="enlarge" class="ghost" hidden>Enlarge for scanning</button>
-        <!-- A declining wallet posts nothing, so the verifier has to be able to
-             stop waiting itself. Told to the service, not faked in the page. -->
-        <button id="cancel" class="ghost" hidden>Cancel this check</button>
-        <p class="muted" id="hint" hidden>
-          <span class="pulse" aria-hidden="true"></span>
-          Waiting for your wallet… <span id="countdown"></span>
-        </p>
-        <div class="chips" id="policy"></div>
+    <main class="layout">
+      <!-- THE SERVICE: what a citizen sees and does. -->
+      <section class="card service" aria-labelledby="headline">
+        <p class="label" data-i18n="app.title">Age check</p>
+        <h1 id="headline">Prove you are over 18</h1>
+        <p class="lede" id="lede"></p>
+
+        <div class="controls" id="controls">
+          <!-- One page, both thresholds, so a visiting team can try each rule.
+               A real service has one fixed rule. ?age= preselects. -->
+          <div class="field">
+            <span class="field-label" data-i18n="rule.label">Minimum age</span>
+            <div class="segmented" id="rule" role="group"></div>
+          </div>
+          <!-- Inji-based wallets answer Presentation Exchange over ldp_vc, other
+               OpenID4VP wallets DCQL over SD-JWT; the request has to be built
+               for one of them. ?wallet=inji preselects. Hidden unless /policy
+               lists both. -->
+          <div class="field" id="wallet-field" hidden>
+            <span class="field-label" data-i18n="wallet.label">Your wallet</span>
+            <div class="segmented" id="wallet" role="group"></div>
+          </div>
+          <button id="start" class="button primary" data-i18n="start">Start age check</button>
+        </div>
+
+        <!-- The three presentation methods, side by side: scan (cross-device),
+             open in wallet (same device), copy link (copy-paste). -->
+        <div class="present" id="present" hidden>
+          <div id="qr" class="qr"></div>
+          <div class="present-actions">
+            <p class="status-line">
+              <span class="pill waiting"><span class="dot" aria-hidden="true"></span><span data-i18n="waiting">Waiting for your wallet</span></span>
+              <span class="countdown" id="countdown"></span>
+            </p>
+            <p class="hint" data-i18n="scan">Scan with your wallet, or use one of these on this phone</p>
+            <a id="open-wallet" class="button primary" data-i18n="openWallet">Open in wallet</a>
+            <button id="copy-link" class="button" data-i18n="copyLink">Copy link</button>
+            <p class="copied" id="copied" role="status" hidden></p>
+            <label class="link-field" id="link-field-wrap" hidden>
+              <span data-i18n="copyFallback">Copy this link and paste it into your wallet</span>
+              <input id="link-field" readonly />
+            </label>
+            <div class="row">
+              <button id="enlarge" class="button ghost" data-i18n="enlarge">Enlarge code</button>
+              <button id="cancel" class="button ghost" data-i18n="cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="result" id="result" hidden aria-live="polite">
+          <div class="verdict" id="verdict">
+            <span class="verdict-icon" id="verdict-icon" aria-hidden="true"></span>
+            <div>
+              <p class="verdict-title" id="verdict-title"></p>
+              <p class="verdict-reason" id="verdict-reason"></p>
+            </div>
+          </div>
+          <details class="technical" id="technical" hidden>
+            <summary data-i18n="technical">Technical detail</summary>
+            <p id="technical-text"></p>
+          </details>
+          <button id="again" class="button" data-i18n="again">Run another check</button>
+        </div>
       </section>
 
-      <section class="panel result" id="panel-result" hidden>
-        <p class="eyebrow" id="result-eyebrow">Result</p>
-        <div id="decision" class="decision"></div>
-        <p id="reason" class="muted"></p>
-        <dl id="detail" class="detail"></dl>
-        <button id="again" class="secondary">Run another check</button>
-      </section>
+      <!-- BEHIND THE SCENES: what the verifier service asked for, checked and
+           received. Every tick comes from the service's response. -->
+      <aside class="card behind" aria-labelledby="behind-title">
+        <div class="card-head">
+          <p class="label" id="behind-title" data-i18n="behind">Behind the scenes</p>
+          <span class="pill" id="state-pill"></span>
+        </div>
+
+        <div class="block">
+          <p class="block-title" data-i18n="ask.title">What we ask</p>
+          <div class="kv">
+            <span class="kv-key" data-i18n="ask.requested">Requested</span>
+            <div class="chips" id="asked"></div>
+          </div>
+          <div class="kv">
+            <span class="kv-key" data-i18n="ask.notAsked">Not asked</span>
+            <div class="chips" id="not-asked"></div>
+          </div>
+        </div>
+
+        <div class="block">
+          <p class="block-title" data-i18n="issuer.title">Accepted issuer</p>
+          <ul class="issuers" id="issuers"></ul>
+        </div>
+
+        <div class="block">
+          <p class="block-title" data-i18n="steps.title">Verification</p>
+          <ol class="steps" id="steps" aria-live="polite"></ol>
+          <p class="algs"><span data-i18n="algorithms">Algorithms</span> <span id="algs"></span></p>
+        </div>
+
+        <div class="block">
+          <p class="block-title" data-i18n="shared.title">What was shared</p>
+          <div class="chips" id="shared"></div>
+          <div class="kv" id="withheld-row" hidden>
+            <span class="kv-key" data-i18n="withheld">Withheld</span>
+            <div class="chips" id="withheld"></div>
+          </div>
+        </div>
+      </aside>
     </main>
 
-    <footer>
-      <div class="inner">
-        <span class="wordmark">sunbird</span>
-        <span>
-          Synthetic demonstration data. The decision is made by the
-          <strong>verifier service</strong> after cryptographic verification and an issuer
-          trust check — this page only displays it.
-        </span>
-      </div>
+    <footer class="footer">
+      <span data-i18n="footer.synthetic">Synthetic demonstration data.</span>
+      <span data-i18n="footer.decision"></span>
+      <span class="powered" data-i18n="footer.powered">Powered by Sunbird RC</span>
     </footer>
-    <script src="app.js"></script>
   </body>
 </html>
