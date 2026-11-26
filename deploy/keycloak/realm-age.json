@@ -73,7 +73,7 @@
     {
       "clientId": "id.animo.paradym",
       "name": "Sunbird Wallet",
-      "description": "The mobile wallet. clientId is the app scheme and the redirect URIs are what the wallet actually sends \u2014 see apps/wallet/app.config.js in the wallet repo.",
+      "description": "The mobile wallet. clientId is the app scheme and the redirect URIs are what the wallet actually sends — see apps/wallet/app.config.js in the wallet repo.",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": true,
@@ -103,6 +103,36 @@
       "optionalClientScopes": [
         "age-verification-credential",
         "age-verification-credential-unlisted-issuer"
+      ]
+    },
+    {
+      "clientId": "inji-sdk-demo",
+      "name": "Inji SDK demo app (Brazil CountryImplementation)",
+      "description": "The mobile wallet. clientId is the app scheme and the redirect URIs are what the wallet actually sends — see apps/wallet/app.config.js in the wallet repo.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:3001/redirect"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "defaultClientScopes": [
+        "citizen-record",
+        "profile",
+        "openid"
+      ],
+      "optionalClientScopes": [
+        "age-verification-credential"
       ]
     }
   ],
