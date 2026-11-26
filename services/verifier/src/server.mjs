@@ -16,6 +16,7 @@ import { oid4vcClient } from './core/oid4vc-client.mjs';
 import { loadAlgorithmPolicy } from './core/algorithms.mjs';
 import { buildDcqlQuery, expectedClaimNames, ISSUER_CLAIM } from './core/dcql.mjs';
 import { evaluateChecks } from './core/checks.mjs';
+import { buildPresentationDefinition, pexClaims } from './core/pex.mjs';
 import { resolveTrustPolicy } from './core/trust.mjs';
 import { credentialStatusChecker } from './core/credential-status.mjs';
 import { assertExactClaims } from './core/claim-policy.mjs';
@@ -86,6 +87,20 @@ function crispQrSvg(content) {
 const PORT = Number(process.env.PORT || 4300);
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost').replace(/\/+$/, '');
 const AGE_VCT = process.env.AGE_VCT || `${PUBLIC_URL}/vct/age-verification-credential`;
+// The W3C type of the same credential issued as ldp_vc, for Inji-based wallets.
+const AGE_CREDENTIAL_TYPE = process.env.AGE_CREDENTIAL_TYPE || 'AgeVerificationCredential';
+
+/**
+ * Which query language a holder's wallet speaks, by wallet family.
+ *
+ *   openid — DCQL over SD-JWT VC (Paradym, walt.id and other OpenID4VP 1.0 wallets)
+ *   inji   — Presentation Exchange over ldp_vc (Inji Wallet, apps embedding the Inji SDK)
+ *
+ * Chosen per session by the relying party's page (?wallet=inji), because the
+ * request has to be built before any wallet has seen it.
+ */
+const WALLET_QUERY = { openid: 'dcql', inji: 'pex' };
+const DEFAULT_WALLET = 'openid';
 const FARMER_VCT = process.env.FARMER_VCT || `${PUBLIC_URL}/vct/farmer-identity-credential`;
 const LAND_VCT = process.env.LAND_VCT || `${PUBLIC_URL}/vct/land-ownership-credential`;
 const SCHOOL_VCT = process.env.SCHOOL_VCT || `${PUBLIC_URL}/vct/school-record-credential`;
@@ -319,7 +334,9 @@ const USE_CASES = {
     signer: 'age',
     // The threshold is chosen per session (POST /age/sessions?threshold=16) and
     // recorded on it, so the decision reads the rule the request was built for.
-    requests: ({ threshold = DEFAULT_THRESHOLD } = {}) => [ageCredentialRequest({ vct: AGE_VCT, threshold })],
+    requests: ({ threshold = DEFAULT_THRESHOLD } = {}) => [
+      ageCredentialRequest({ vct: AGE_VCT, credentialType: AGE_CREDENTIAL_TYPE, threshold }),
+    ],
     describe: ({ threshold = DEFAULT_THRESHOLD } = {}) => `requesting ${ageClaim(threshold)} only`,
     requestedClaims: ({ threshold = DEFAULT_THRESHOLD } = {}) => [ageClaim(threshold)],
     decide: (verified, session) => decideAge(verified[session.requests[0].id], session.threshold),
@@ -342,6 +359,9 @@ const USE_CASES = {
       requestedClaims: [ageClaim(DEFAULT_THRESHOLD)],
       thresholds: SUPPORTED_THRESHOLDS,
       defaultThreshold: DEFAULT_THRESHOLD,
+      // The ldp_vc type an Inji-based wallet is asked for, and the wallet families served.
+      credentialTypeLdp: AGE_CREDENTIAL_TYPE,
+      wallets: Object.keys(WALLET_QUERY),
       protocolClaims: [ISSUER_CLAIM],
       trustedIssuers: trust.issuers.map((i) => i.name),
       approvedAlgorithms: algPolicy.approved,
@@ -462,12 +482,16 @@ async function createSession(useCaseName = 'age', options = {}) {
   if (!useCase) throw new Error(`unknown use case ${useCaseName}`);
 
   const requests = useCase.requests(options);
+  const queryMode = WALLET_QUERY[options.wallet || DEFAULT_WALLET];
   // The purpose the wallet shows the holder before they consent, taken from the
   // use case rather than written here: the string a learner reads has to be the
   // same one the portal's /policy endpoint publishes, or the consent screen and
   // the published policy could disagree about why the data was wanted.
-  const query = buildDcqlQuery(requests, { purpose: useCase.purpose?.() });
-  const vp = await signers[useCase.signer].createRequest(query);
+  const purpose = useCase.purpose?.();
+  const vp =
+    queryMode === 'pex'
+      ? await signers[useCase.signer].createPresentationRequest(buildPresentationDefinition(requests, { purpose }))
+      : await signers[useCase.signer].createRequest(buildDcqlQuery(requests, { purpose }));
 
   const session = sessions.create({
     id: vp.transaction_id,
@@ -478,12 +502,16 @@ async function createSession(useCaseName = 'age', options = {}) {
     signer: useCase.signer,
     // Undefined for every use case but Age, which reads it in decide/respond.
     threshold: options.threshold,
+    // Which query check the result must carry, and whether its claims need
+    // mapping from the PEX shape before the shared checks run.
+    queryMode,
     // One entry per credential the request asks for. Age has exactly one, which
     // is why its behaviour is unchanged by this becoming a list.
     requests: requests.map((request) => ({
       id: request.id,
       role: request.role,
       expectedClaims: expectedClaimNames(request),
+      credentialType: request.credentialType,
       // Carried into the session, or the status check silently does not happen: the
       // decision reads the session's copy of the request, not the one the query was built
       // from, and a field dropped here is a check that looks configured and never runs.
@@ -559,7 +587,7 @@ async function readSession(sessionId) {
 
   // 1. Cryptographic verification, upstream. Nothing below runs until this
   //    passes — including, and especially, the domain decision.
-  const verification = evaluateChecks(status);
+  const verification = evaluateChecks(status, { query: session.queryMode || 'dcql' });
   if (!verification.ok) {
     if (verification.reason === 'pending') {
       // qrData travels with the waiting state so a client that has only a
@@ -614,7 +642,17 @@ async function readSession(sessionId) {
   const verified = {};
   const issuerNames = [];
   for (const request of session.requests) {
-    const claims = status.claims?.[request.id];
+    let claims = status.claims?.[request.id];
+    if (claims && typeof claims === 'object' && session.queryMode === 'pex') {
+      // An ldp_vc answer carries its issuer and type as credential-level fields;
+      // map them onto the DCQL shape so steps 2-4 below run unchanged.
+      try {
+        claims = pexClaims(claims, request);
+      } catch (err) {
+        console.log(`[verifier] session ${sessionId} rejected: ${err.message}`);
+        return reject(err.message);
+      }
+    }
     if (!claims || typeof claims !== 'object') {
       return reject(
         session.requests.length > 1
@@ -743,7 +781,11 @@ const server = createServer(async (req, res) => {
         if (err.code !== 'UNSUPPORTED_THRESHOLD') throw err;
         return send(400, { error: 'unsupported_threshold', supported: SUPPORTED_THRESHOLDS });
       }
-      const result = await createSession('age', { threshold });
+      const wallet = url.searchParams.get('wallet') || DEFAULT_WALLET;
+      if (!WALLET_QUERY[wallet]) {
+        return send(400, { error: 'unsupported_wallet', supported: Object.keys(WALLET_QUERY) });
+      }
+      const result = await createSession('age', { threshold, wallet });
       return send(result.status, result.body);
     }
     if (req.method === 'POST' && path.endsWith('/sessions')) {

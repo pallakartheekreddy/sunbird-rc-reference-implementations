@@ -38,10 +38,21 @@ const isRefusal = (error) =>
   typeof error === 'string' && REFUSAL_SIGNATURES.some((pattern) => pattern.test(error));
 
 /**
+ * The query check names which query language the wallet satisfied: `dcql` for
+ * an SD-JWT/DCQL session, `pex` for an ldp_vc/Presentation Exchange one. A
+ * session requires its own and only its own, so a PEX result can never satisfy
+ * a DCQL session or the reverse.
+ */
+export const QUERY_CHECKS = ['dcql', 'pex'];
+
+/**
  * @param {{status?: string, verified?: boolean, checks?: Record<string,string>, error?: string}} status
+ * @param {{query?: 'dcql'|'pex'}} [options] the query language the session asked in
  * @returns {{ok: true} | {ok: false, reason: string, failedCheck?: string, declined?: boolean}}
  */
-export function evaluateChecks(status) {
+export function evaluateChecks(status, { query = 'dcql' } = {}) {
+  if (!QUERY_CHECKS.includes(query)) throw new Error(`unknown query mode ${String(query)}`);
+  const required = REQUIRED_CHECKS.map((name) => (name === 'dcql' ? query : name));
   if (!status || typeof status !== 'object') return { ok: false, reason: 'no verification result' };
   if (status.status === 'pending') return { ok: false, reason: 'pending' };
   if (status.verified !== true) {
@@ -51,7 +62,7 @@ export function evaluateChecks(status) {
     return { ok: false, reason: status.error ? 'verification failed' : 'not verified' };
   }
   const checks = status.checks || {};
-  for (const name of REQUIRED_CHECKS) {
+  for (const name of required) {
     if (checks[name] !== 'OK') {
       return { ok: false, reason: `check ${name} did not pass`, failedCheck: name };
     }

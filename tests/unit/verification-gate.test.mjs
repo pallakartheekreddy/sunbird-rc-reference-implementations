@@ -79,3 +79,32 @@ test('sessions expire, and do not accumulate a history of holder activity', () =
   assert.equal(sessions.get('txn-1'), undefined, 'an expired session must not be readable');
   assert.equal(sessions.size, 0, 'and must not be retained');
 });
+
+test('a PEX session requires the pex check in place of dcql, and nothing else changes', () => {
+  // The query check names which query language the wallet satisfied. A PEX
+  // transaction never reports `dcql`, and a DCQL one never reports `pex`.
+  const pexChecks = { ...allOk(), pex: 'OK' };
+  delete pexChecks.dcql;
+  assert.deepEqual(evaluateChecks({ status: 'verified', verified: true, checks: pexChecks }, { query: 'pex' }), {
+    ok: true,
+  });
+  // The PEX check is required, not optional.
+  const missing = { ...pexChecks };
+  delete missing.pex;
+  const result = evaluateChecks({ status: 'verified', verified: true, checks: missing }, { query: 'pex' });
+  assert.equal(result.failedCheck, 'pex');
+  // And the other required checks are still required on the PEX path.
+  const noBinding = { ...pexChecks };
+  delete noBinding.holderBinding;
+  assert.equal(
+    evaluateChecks({ status: 'verified', verified: true, checks: noBinding }, { query: 'pex' }).failedCheck,
+    'holderBinding',
+  );
+});
+
+test('a DCQL session is not satisfied by a pex check, and an unknown query mode is refused', () => {
+  const pexChecks = { ...allOk(), pex: 'OK' };
+  delete pexChecks.dcql;
+  assert.equal(evaluateChecks({ status: 'verified', verified: true, checks: pexChecks }).failedCheck, 'dcql');
+  assert.throws(() => evaluateChecks({ status: 'verified', verified: true, checks: allOk() }, { query: 'sql' }), /query/);
+});

@@ -217,7 +217,7 @@ check "the negative fixture is owned by the tests, not bootstrap" 'grep -q "ensu
 # Iteration 01 shipped this as a recorded deviation because `alg` was not
 # observable. It is enforced now, and these assert it stays enforced rather than
 # decaying back into a policy file nobody reads.
-check "the approved-algorithm policy is version-controlled" '[ -f config/policy/algorithms.json ] && python3 -c "import json;d=json.load(open(\"config/policy/algorithms.json\"));assert d[\"approved\"]==[\"ES256\"]"'
+check "the approved-algorithm policy is version-controlled" '[ -f config/policy/algorithms.json ] && python3 -c "import json;d=json.load(open(\"config/policy/algorithms.json\"));assert d[\"approved\"]==[\"ES256\",\"EdDSA\"]"'
 check "the verifier enforces it, not just loads it" 'grep -q "algPolicy.check(status.algs)" services/verifier/src/server.mjs && grep -q "failedCheck: .algorithm." services/verifier/src/server.mjs'
 # The ORDER is the control, not just the presence of the check: an unapproved
 # algorithm has to be refused before the lending rule runs, or the rule has

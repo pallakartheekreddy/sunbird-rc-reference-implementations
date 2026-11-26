@@ -56,11 +56,15 @@ export function parseThreshold(raw) {
 /**
  * Minimum disclosure for an age-restricted service: one derived assertion.
  *
- * @param {{vct: string, threshold?: number}} config
- * @returns {{id: string, vct: string, claims: string[]}}
+ * `vct` names the SD-JWT credential type (DCQL); `credentialType` the W3C type
+ * the same credential carries as ldp_vc (Presentation Exchange). One request,
+ * whichever query language the holder's wallet speaks.
+ *
+ * @param {{vct: string, credentialType?: string, threshold?: number}} config
+ * @returns {{id: string, vct: string, credentialType?: string, claims: string[]}}
  */
-export function ageCredentialRequest({ vct, threshold = DEFAULT_THRESHOLD }) {
-  return { id: 'age_cred', vct, claims: [ageClaim(threshold)] };
+export function ageCredentialRequest({ vct, credentialType, threshold = DEFAULT_THRESHOLD }) {
+  return { id: 'age_cred', vct, ...(credentialType ? { credentialType } : {}), claims: [ageClaim(threshold)] };
 }
 
 /**

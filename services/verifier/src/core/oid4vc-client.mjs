@@ -51,6 +51,26 @@ export function oid4vcClient({ baseUrl }) {
     },
 
     /**
+     * Creates an OID4VP transaction from a Presentation Exchange definition,
+     * for wallets that present ldp_vc and do not speak DCQL (Inji Wallet and
+     * the Inji SDK).
+     *
+     * Unsigned, by value, with the redirect_uri client_id prefix: Inji-based
+     * wallets verify a signed request object only with EdDSA, which is not
+     * what this verifier's DID signs with, and they accept redirect_uri.
+     * oid4vc-service re-checks at response time that the client_id names the
+     * exact endpoint the response is posted to.
+     *
+     * @param {object} presentationDefinition
+     */
+    async createPresentationRequest(presentationDefinition) {
+      return json('/vp/request', {
+        method: 'POST',
+        body: JSON.stringify({ presentation_definition: presentationDefinition, signed: false }),
+      });
+    },
+
+    /**
      * Reads the transaction result.
      *
      * Shape: {status, verified, checks{...}, claims{[queryId]: {...}}, holderDid}.

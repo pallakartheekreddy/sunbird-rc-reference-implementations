@@ -28,8 +28,19 @@ function shipped() {
 }
 
 describe('the approved-algorithm policy', () => {
-  test('the shipped policy approves ES256, and only ES256', () => {
-    assert.deepEqual(shipped().approved, ['ES256']);
+  test('the shipped policy approves ES256 and EdDSA, and nothing else', () => {
+    // EdDSA for ldp_vc: credentials-service's Ed25519Signature2020 proofs, which
+    // oid4vc-service reports as EdDSA, and Inji wallets' Ed25519 holder keys.
+    assert.deepEqual(shipped().approved, ['ES256', 'EdDSA']);
+  });
+
+  test('an Inji ldp_vc presentation (ES256 holder proof, Ed25519 credential) is accepted', () => {
+    assert.equal(shipped().check(['ES256', 'EdDSA']).ok, true);
+  });
+
+  test('an unrecognised proof suite, reported by name, is refused', () => {
+    // oid4vc-service reports a suite it cannot map as its own type name.
+    assert.equal(shipped().check(['ES256', 'BbsBlsSignature2020']).ok, false);
   });
 
   test('an ES256 presentation is accepted', () => {
@@ -45,7 +56,7 @@ describe('the approved-algorithm policy', () => {
   });
 
   test('an unapproved algorithm is rejected', () => {
-    for (const alg of ['ES384', 'ES512', 'RS256', 'PS256', 'EdDSA', 'HS256']) {
+    for (const alg of ['ES384', 'ES512', 'RS256', 'PS256', 'ES256K', 'HS256']) {
       const result = shipped().check([alg]);
       assert.equal(result.ok, false, `${alg} must not be accepted`);
       assert.match(result.reason, /not approved/);

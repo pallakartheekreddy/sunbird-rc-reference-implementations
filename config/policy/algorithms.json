@@ -15,10 +15,16 @@
     "recorded the allowlist as a deviation rather than shipping a control that",
     "did nothing. That reporting exists now, so the control is real.",
     "",
-    "ES256 only, because that is what identity-service signs SD-JWT VCs with and",
-    "what the wallet's holder keys use. Widening this list is a security decision",
-    "and belongs in review, which is why it is a version-controlled file and not",
-    "an environment variable."
+    "ES256 because that is what identity-service signs SD-JWT VCs with and what",
+    "Paradym's holder keys use. EdDSA (Ed25519) because credentials-service signs",
+    "ldp_vc credentials with Ed25519Signature2020, which oid4vc-service reports as",
+    "EdDSA, and Inji-based wallets may bind with Ed25519 keys. Both are current,",
+    "strong signature algorithms. Widening this list further is a security",
+    "decision and belongs in review, which is why it is a version-controlled file",
+    "and not an environment variable."
   ],
-  "approved": ["ES256"]
+  "approved": [
+    "ES256",
+    "EdDSA"
+  ]
 }
