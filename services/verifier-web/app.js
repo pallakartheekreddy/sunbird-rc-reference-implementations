@@ -152,12 +152,14 @@ el('cancel').addEventListener('click', async () => {
 async function start() {
   el('start').disabled = true;
   el('threshold').disabled = true;
-  const { status, body } = await api(`/sessions?threshold=${encodeURIComponent(el('threshold').value)}`, {
-    method: 'POST',
-  });
+  el('wallet').disabled = true;
+  const query = new URLSearchParams({ threshold: el('threshold').value });
+  if (!el('wallet-wrap').hidden) query.set('wallet', el('wallet').value);
+  const { status, body } = await api(`/sessions?${query}`, { method: 'POST' });
   if (status !== 201) {
     el('start').disabled = false;
     el('threshold').disabled = false;
+    el('wallet').disabled = false;
     return showResult({ reason: body.error || 'Could not start an age check.' });
   }
 
@@ -178,6 +180,7 @@ async function start() {
   el('hint').hidden = false;
   el('start').hidden = true;
   el('threshold-wrap').hidden = true;
+  el('wallet-wrap').hidden = true;
   el('request-eyebrow').textContent = 'Scan with your wallet';
 
   state.deadline = Date.now() + body.expiresInSeconds * 1000;
@@ -195,6 +198,7 @@ async function showPolicy() {
   if (!body.requestedClaims) return;
   state.policy = body;
   setupThresholds(body);
+  setupWallets(body);
   renderPolicy();
 }
 
@@ -217,6 +221,13 @@ function setupThresholds({ thresholds = [18], defaultThreshold = 18 }) {
     select.appendChild(option);
   }
   showThreshold();
+}
+
+/** Offers the wallet choice only when the service serves more than one wallet family. */
+function setupWallets({ wallets = [] }) {
+  if (!wallets.includes('inji')) return;
+  if (new URLSearchParams(window.location.search).get('wallet') === 'inji') el('wallet').value = 'inji';
+  el('wallet-wrap').hidden = false;
 }
 
 function showThreshold() {
