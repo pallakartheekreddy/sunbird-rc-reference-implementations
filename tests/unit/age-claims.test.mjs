@@ -9,6 +9,7 @@ import {
   parseCalendarDate,
   deriveAgeClaims,
   AGE_THRESHOLDS,
+  ageClaimsValidUntil,
 } from '../../services/age-issuer/src/age-claims.mjs';
 
 const on = (iso) => parseCalendarDate(iso);
@@ -100,4 +101,17 @@ test('deriveAgeClaims asserts exactly the published thresholds: 16 and 18', () =
   const claims = deriveAgeClaims({ citizenId: 'X', dateOfBirth: '2011-01-01' }, new Date('2026-08-24T00:00:00Z'));
   assert.deepEqual([claims.ageOver16, claims.ageOver18], [false, false]);
   assert.deepEqual(Object.keys(claims).filter((k) => k.startsWith('ageOver')).sort(), ['ageOver16', 'ageOver18']);
+});
+
+test('ageClaimsValidUntil: the birthday a "not over N" answer becomes wrong', () => {
+  // The credential must expire then. Same rule as oid4vc-service's
+  // registry-derived validUntil, so both issuance paths agree.
+  const now = new Date('2026-11-26T10:00:00Z');
+  assert.equal(ageClaimsValidUntil('2009-05-26', now), '2027-05-26', '17: until 18');
+  assert.equal(ageClaimsValidUntil('2011-03-01', now), '2027-03-01', '15: until 16, the earliest flip');
+  assert.equal(ageClaimsValidUntil('1990-01-01', now), undefined, 'adult: no expiry');
+  assert.equal(ageClaimsValidUntil('2008-11-26', now), undefined, 'turns 18 today: already over 18');
+  assert.equal(ageClaimsValidUntil('2008-11-27', now), '2026-11-27', 'turns 18 tomorrow');
+  assert.equal(ageClaimsValidUntil('2012-02-29', now), '2028-02-29', 'leap-day 16th birthday in a leap year');
+  assert.throws(() => ageClaimsValidUntil('not-a-date', now));
 });

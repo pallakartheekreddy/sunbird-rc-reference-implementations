@@ -17,7 +17,7 @@
 // is services/verifier.
 
 import { createServer } from 'node:http';
-import { deriveAgeClaims } from './age-claims.mjs';
+import { deriveAgeClaims, ageClaimsValidUntil } from './age-claims.mjs';
 import { registryClient } from './registry.mjs';
 import { oid4vcClient } from './oid4vc.mjs';
 import { offerFormat, claimsForSchema } from './formats.mjs';
@@ -60,10 +60,15 @@ async function issueOffer(citizenId, format = CREDENTIAL_FORMAT) {
   // date of birth, because an ldp_vc is presented whole.
   const claims = claimsForSchema(derived, config.claimNames);
 
+  // The answers change on a birthday (a minor's "not over 18"); the credential
+  // expires that day. Adults get no expiry.
+  const expirationDate = ageClaimsValidUntil(record.dateOfBirth);
+
   const offer = await oid4vc.createOffer({
     configurationId: config.configurationId,
     format,
     claims,
+    expirationDate,
   });
 
   console.log(
@@ -81,6 +86,7 @@ async function issueOffer(citizenId, format = CREDENTIAL_FORMAT) {
       credentialOfferUri: offer.credential_offer_uri,
       credentialConfigurationId: config.configurationId,
       format,
+      ...(expirationDate ? { expirationDate } : {}),
       vct: config.vct,
       // Names only. Returning the values here would hand the caller the very
       // claims the credential exists to keep in the holder's control.

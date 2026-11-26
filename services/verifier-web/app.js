@@ -136,7 +136,14 @@ function renderVerdict() {
   el('verdict-title').textContent = tr(o.title, { t: threshold() });
   const failed = stepStatuses(r).find((s) => s.status === 'fail');
   // "failed at: Decision. No decision was made." would contradict itself.
-  const reasonKey = o.reason === 'reason.failed' && failed?.id === 'decision' ? 'reason.failedDecision' : o.reason;
+  const reasonKey =
+    o.reason !== 'reason.failed'
+      ? o.reason
+      : failed?.id === 'decision'
+        ? 'reason.failedDecision'
+        : failed?.id === 'expiry'
+          ? 'reason.credentialExpired'
+          : o.reason;
   el('verdict-reason').textContent = tr(reasonKey, { t: threshold(), step: failed ? tr(`step.${failed.id}`) : '' });
   // The service's own wording, in English, for anyone who wants the exact cause.
   const technical = [r.reason, r.diagnostic].filter(Boolean).join(' — ');

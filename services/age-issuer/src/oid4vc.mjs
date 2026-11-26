@@ -93,15 +93,16 @@ export function oid4vcClient({ oid4vcBaseUrl, schemaBaseUrl }) {
      * first iteration because it keeps the holder journey to one scan. The code
      * is short-lived and single-use — reusing it is one of the negative tests.
      *
-     * @param {{configurationId: string, format: string, claims: Record<string, unknown>}} offer
+     * @param {{configurationId: string, format: string, claims: Record<string, unknown>, expirationDate?: string}} offer
      */
-    async createOffer({ configurationId, format, claims }) {
+    async createOffer({ configurationId, format, claims, expirationDate }) {
       return json(`${oid4vc}/oid4vc/offer`, {
         method: 'POST',
         body: JSON.stringify({
           credential_configuration_id: configurationId,
           format,
           claims,
+          ...(expirationDate ? { expiration_date: expirationDate } : {}),
         }),
       });
     },

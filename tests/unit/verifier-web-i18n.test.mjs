@@ -74,3 +74,8 @@ test('messages for a check that could not start, and a failure at the decision',
   // "failed at: Decision. No decision was made." contradicts itself.
   assert.doesNotMatch(MESSAGES.en['reason.failedDecision'], /\{step\}/);
 });
+
+test('the expiry step and its explanation exist', () => {
+  for (const key of ['step.expiry', 'reason.credentialExpired']) assert.ok(key in MESSAGES.en, key);
+});
+

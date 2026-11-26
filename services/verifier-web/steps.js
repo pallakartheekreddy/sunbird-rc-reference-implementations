@@ -10,6 +10,7 @@ export const STEP_IDS = [
   'holderSignature',
   'holderBinding',
   'revocation',
+  'expiry',
   'algorithm',
   // Disclosure before trust: the verifier service checks the credential type and
   // the exact disclosure BEFORE the issuer, so on a disclosure rejection the
@@ -26,6 +27,7 @@ const CHECKS = {
   holderSignature: { all: ['holderSignature', 'nonce', 'audience'] },
   holderBinding: { all: ['holderBinding'] },
   revocation: { all: ['revocation'] },
+  expiry: { all: ['expiry'] },
   algorithm: { all: ['algorithm'] },
 };
 

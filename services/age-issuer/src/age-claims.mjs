@@ -106,3 +106,33 @@ export function deriveAgeClaims(record, now = new Date()) {
   }
   return claims;
 }
+
+/**
+ * The date a derived age answer stops being true: the earliest birthday at
+ * which a currently-false ageOverNN becomes true. A credential carrying these
+ * answers should expire then. `undefined` when every answer is already true.
+ *
+ * Same rule as oid4vc-service's registry-derived validUntil, so offers and
+ * wallet-initiated issuance expire on the same day. A 29 February birthday in
+ * a non-leap year is reached on 1 March (as completedYears counts it).
+ *
+ * @param {string} dateOfBirth YYYY-MM-DD
+ * @param {Date} [now]
+ * @returns {string|undefined} YYYY-MM-DD
+ */
+export function ageClaimsValidUntil(dateOfBirth, now = new Date()) {
+  const birth = parseCalendarDate(dateOfBirth);
+  const today = { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1, day: now.getUTCDate() };
+  const age = completedYears(birth, today);
+  const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const pad = (n) => String(n).padStart(2, '0');
+  let earliest;
+  for (const threshold of AGE_THRESHOLDS) {
+    if (age >= threshold) continue;
+    const year = birth.year + threshold;
+    const [month, day] = birth.month === 2 && birth.day === 29 && !isLeap(year) ? [3, 1] : [birth.month, birth.day];
+    const date = `${year}-${pad(month)}-${pad(day)}`;
+    if (!earliest || date < earliest) earliest = date;
+  }
+  return earliest;
+}

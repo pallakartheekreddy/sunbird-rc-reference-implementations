@@ -8,12 +8,12 @@ import { STEP_IDS, stepStatuses, extraChecks } from '../../services/verifier-web
 
 const ALL = {
   holderSignature: 'OK', nonce: 'OK', audience: 'OK', credentialSignatures: 'OK',
-  holderBinding: 'OK', revocation: 'OK', dcql: 'OK', algorithm: 'OK',
+  holderBinding: 'OK', revocation: 'OK', expiry: 'OK', dcql: 'OK', algorithm: 'OK',
 };
 const st = (r) => Object.fromEntries(stepStatuses(r).map((s) => [s.id, s.status]));
 
 test('the steps, in order', () => {
-  assert.deepEqual(STEP_IDS, ['request', 'issuerSignature', 'holderSignature', 'holderBinding', 'revocation', 'algorithm', 'disclosure', 'trust', 'decision']);
+  assert.deepEqual(STEP_IDS, ['request', 'issuerSignature', 'holderSignature', 'holderBinding', 'revocation', 'expiry', 'algorithm', 'disclosure', 'trust', 'decision']);
   assert.deepEqual(stepStatuses({ state: 'decided', checks: ALL }).map((s) => s.id), STEP_IDS);
 });
 
@@ -93,3 +93,13 @@ test('a disclosure rejection never shows trust as passed: the service checks dis
     assert.equal(s.trust, 'pending', reason);
   }
 });
+
+test('an expired credential fails the expiry step, not the signature', () => {
+  // oid4vc-service checks expiry before the proof and stops there, so later
+  // checks are absent; the cross goes on "Not expired".
+  const s = st({ state: 'rejected', checks: { expiry: 'NOK' }, reason: 'verification failed' });
+  assert.equal(s.expiry, 'fail');
+  assert.equal(s.issuerSignature, 'pending');
+  assert.equal(s.trust, 'pending');
+});
+

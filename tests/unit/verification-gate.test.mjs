@@ -36,7 +36,7 @@ test('a MISSING check is a failure, not a pass', () => {
 test('holder binding and audience are among the required checks', () => {
   // Named explicitly so that dropping one from the list is a test change rather
   // than a silent policy change.
-  for (const required of ['holderSignature', 'nonce', 'audience', 'credentialSignatures', 'holderBinding', 'revocation', 'dcql']) {
+  for (const required of ['holderSignature', 'nonce', 'audience', 'credentialSignatures', 'holderBinding', 'revocation', 'expiry', 'dcql']) {
     assert.ok(REQUIRED_CHECKS.includes(required), `${required} must be required`);
   }
 });

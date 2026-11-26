@@ -18,6 +18,9 @@ export const REQUIRED_CHECKS = [
   'credentialSignatures',
   'holderBinding',
   'revocation',
+  // oid4vc-service refuses an expired credential (e.g. a minor's "not over 18"
+  // past the birthday it was limited to) and reports this on success.
+  'expiry',
   'dcql',
 ];
 
