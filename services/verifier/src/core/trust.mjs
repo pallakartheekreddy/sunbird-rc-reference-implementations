@@ -257,3 +257,16 @@ function pickName(name) {
   const english = values.find(([k]) => k === 'en');
   return (english || values[0])[1];
 }
+
+/**
+ * The trusted issuers whose allowlist entry covers one credential type, for a
+ * relying party to PUBLISH which issuer it accepts for that credential. Display
+ * only: trust checking still runs against the whole allowlist, and the
+ * credential type is pinned by the request itself.
+ *
+ * @param {Array<{name: string, credentials?: string[]}>} issuers
+ * @param {string} credentialName
+ */
+export function issuersFor(issuers, credentialName) {
+  return issuers.filter((issuer) => (issuer.credentials || []).includes(credentialName));
+}

@@ -17,7 +17,7 @@ import { loadAlgorithmPolicy } from './core/algorithms.mjs';
 import { buildDcqlQuery, expectedClaimNames, ISSUER_CLAIM } from './core/dcql.mjs';
 import { evaluateChecks } from './core/checks.mjs';
 import { buildPresentationDefinition, pexClaims } from './core/pex.mjs';
-import { resolveTrustPolicy } from './core/trust.mjs';
+import { resolveTrustPolicy, issuersFor } from './core/trust.mjs';
 import { credentialStatusChecker } from './core/credential-status.mjs';
 import { assertExactClaims } from './core/claim-policy.mjs';
 import { sessionStore } from './core/sessions.mjs';
@@ -89,6 +89,9 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost').replace(/\/+$/
 const AGE_VCT = process.env.AGE_VCT || `${PUBLIC_URL}/vct/age-verification-credential`;
 // The W3C type of the same credential issued as ldp_vc, for Inji-based wallets.
 const AGE_CREDENTIAL_TYPE = process.env.AGE_CREDENTIAL_TYPE || 'AgeVerificationCredential';
+// The credential's name in the trust allowlist, to publish only the issuers
+// that can vouch for age.
+const AGE_CREDENTIAL_NAME = process.env.AGE_CREDENTIAL_NAME || 'Age Verification Credential';
 
 /**
  * Which query language a holder's wallet speaks, by wallet family.
@@ -363,7 +366,9 @@ const USE_CASES = {
       credentialTypeLdp: AGE_CREDENTIAL_TYPE,
       wallets: Object.keys(WALLET_QUERY),
       protocolClaims: [ISSUER_CLAIM],
-      trustedIssuers: trust.issuers.map((i) => i.name),
+      // Only the issuers that can vouch for age: listing the bank's and the
+      // schools' issuers here read as if any of them could.
+      trustedIssuers: issuersFor(trust.issuers, AGE_CREDENTIAL_NAME).map((i) => i.name),
       approvedAlgorithms: algPolicy.approved,
     }),
   },
