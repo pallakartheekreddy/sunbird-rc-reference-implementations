@@ -11,6 +11,7 @@
 import { LANGS, t, pickLang } from './i18n.js';
 import { stepStatuses, extraChecks } from './steps.js';
 import { copyText } from './copy.js';
+import { request, pollStillCurrent, startFailure } from './flow.js';
 
 const API = '/api/verifier';
 const POLL_INTERVAL_MS = 1500;
@@ -47,11 +48,8 @@ const node = (tag, className, textValue) => {
   return n;
 };
 
-async function api(path, init) {
-  const res = await fetch(`${API}${path}`, init);
-  const body = await res.json().catch(() => ({}));
-  return { status: res.status, body };
-}
+// Never rejects: a network error comes back as status 0 (flow.js).
+const api = (path, init) => request(fetch, `${API}${path}`, init);
 
 // ---------------------------------------------------------------- controls
 
@@ -121,6 +119,8 @@ const OUTCOME = {
   declined: { tone: 'neutral', icon: '–', title: 'result.declined', reason: 'reason.declined' },
   cancelled: { tone: 'neutral', icon: '–', title: 'result.cancelled', reason: 'reason.cancelled' },
   expired: { tone: 'neutral', icon: '–', title: 'result.expired', reason: 'reason.expired' },
+  // The check never started: no session, no wallet, so not a failed presentation.
+  unavailable: { tone: 'neutral', icon: '!', title: 'result.unavailable', reason: 'reason.unavailable' },
 };
 
 function outcomeOf(result) {
@@ -135,7 +135,9 @@ function renderVerdict() {
   el('verdict-icon').textContent = o.icon;
   el('verdict-title').textContent = tr(o.title, { t: threshold() });
   const failed = stepStatuses(r).find((s) => s.status === 'fail');
-  el('verdict-reason').textContent = tr(o.reason, { t: threshold(), step: failed ? tr(`step.${failed.id}`) : '' });
+  // "failed at: Decision. No decision was made." would contradict itself.
+  const reasonKey = o.reason === 'reason.failed' && failed?.id === 'decision' ? 'reason.failedDecision' : o.reason;
+  el('verdict-reason').textContent = tr(reasonKey, { t: threshold(), step: failed ? tr(`step.${failed.id}`) : '' });
   // The service's own wording, in English, for anyone who wants the exact cause.
   const technical = [r.reason, r.diagnostic].filter(Boolean).join(' — ');
   el('technical').hidden = !technical || r.state === 'decided';
@@ -237,7 +239,7 @@ async function start() {
   if (!el('wallet-field').hidden) query.set('wallet', state.wallet);
   const { status, body } = await api(`/sessions?${query}`, { method: 'POST' });
   el('start').disabled = false;
-  if (status !== 201) return finish({ state: 'rejected', reason: body.error || `HTTP ${status}` });
+  if (status !== 201) return finish(startFailure(status, body));
 
   state.sessionId = body.sessionId;
   state.qrData = body.qrData;
@@ -257,11 +259,18 @@ async function start() {
 function tick() {
   const left = Math.max(0, Math.round((state.deadline - Date.now()) / 1000));
   el('countdown').textContent = tr('secondsLeft', { s: left });
+  // The server's own expiry normally arrives as a 404 here; if it cannot be
+  // reached at all, the page still stops waiting shortly after the deadline.
+  if (Date.now() > state.deadline + 10000) return finish({ state: 'expired' });
   if (left === 0) poll();
 }
 
 async function poll() {
-  const { status, body } = await api(`/sessions/${state.sessionId}`);
+  const id = state.sessionId;
+  const { status, body } = await api(`/sessions/${id}`);
+  // A late answer after Cancel, or for an older session, must not overwrite the page.
+  if (!pollStillCurrent(state, id)) return;
+  if (status === 0 || status >= 500) return; // transient; the deadline still ends it
   if (status === 404 || body.state === 'expired') return finish({ state: 'expired' });
   if (body.state === 'waiting') return;
   if (['cancelled', 'declined', 'rejected', 'decided'].includes(body.state)) return finish(body);

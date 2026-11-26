@@ -13,7 +13,7 @@ const ALL = {
 const st = (r) => Object.fromEntries(stepStatuses(r).map((s) => [s.id, s.status]));
 
 test('the steps, in order', () => {
-  assert.deepEqual(STEP_IDS, ['request', 'issuerSignature', 'holderSignature', 'holderBinding', 'revocation', 'algorithm', 'trust', 'disclosure', 'decision']);
+  assert.deepEqual(STEP_IDS, ['request', 'issuerSignature', 'holderSignature', 'holderBinding', 'revocation', 'algorithm', 'disclosure', 'trust', 'decision']);
   assert.deepEqual(stepStatuses({ state: 'decided', checks: ALL }).map((s) => s.id), STEP_IDS);
 });
 
@@ -36,7 +36,7 @@ test('untrusted issuer fails trust; earlier ok, later pending', () => {
   const s = st({ state: 'rejected', checks: ALL, reason: 'issuer is not in the demo trust allowlist' });
   assert.equal(s.trust, 'fail');
   assert.equal(s.revocation, 'ok');
-  assert.equal(s.disclosure, 'pending');
+  assert.equal(s.disclosure, 'ok', 'the service checked disclosure before trust');
   assert.equal(s.decision, 'pending');
 });
 
@@ -82,4 +82,14 @@ test('a rejected result with no checks at all still shows a failure', () => {
 test('extraChecks lists unmapped keys', () => {
   assert.deepEqual(extraChecks({ ...ALL, mdocDeviceAuth: 'OK' }), ['mdocDeviceAuth']);
   assert.deepEqual(extraChecks(undefined), []);
+});
+
+test('a disclosure rejection never shows trust as passed: the service checks disclosure first', () => {
+  // readSession runs the type check, "matched no credential" and the exact-
+  // disclosure check BEFORE the trust check, so on these rejections trust never ran.
+  for (const reason of ['presentation disclosed unrequested claims: birthdate', 'presentation matched no credential for this request', 'presented credential is not of type X']) {
+    const s = st({ state: 'rejected', checks: ALL, reason });
+    assert.equal(s.disclosure, 'fail', reason);
+    assert.equal(s.trust, 'pending', reason);
+  }
 });

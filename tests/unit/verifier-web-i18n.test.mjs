@@ -57,3 +57,20 @@ test('the keys the page uses all exist', () => {
     'status.pending', 'status.ok', 'status.fail', 'footer.synthetic', 'footer.decision', 'footer.powered', 'lang.label'];
   for (const key of used) assert.ok(key in MESSAGES.en, key);
 });
+
+test('a step marked passed never reuses the decision words', () => {
+  // On a DENIED result the panel shows nine "passed" labels next to the verdict;
+  // in Portuguese "aprovado" there read as nine approvals beside "negado".
+  for (const lang of LANGS) {
+    const ok = MESSAGES[lang]['status.ok'].toLowerCase();
+    for (const key of ['result.approved', 'result.denied']) {
+      assert.ok(!MESSAGES[lang][key].toLowerCase().includes(ok), `${lang}: status.ok "${ok}" appears in ${key}`);
+    }
+  }
+});
+
+test('messages for a check that could not start, and a failure at the decision', () => {
+  for (const key of ['result.unavailable', 'reason.unavailable', 'reason.failedDecision']) assert.ok(key in MESSAGES.en, key);
+  // "failed at: Decision. No decision was made." contradicts itself.
+  assert.doesNotMatch(MESSAGES.en['reason.failedDecision'], /\{step\}/);
+});

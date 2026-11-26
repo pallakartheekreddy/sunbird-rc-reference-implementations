@@ -11,8 +11,11 @@ export const STEP_IDS = [
   'holderBinding',
   'revocation',
   'algorithm',
-  'trust',
+  // Disclosure before trust: the verifier service checks the credential type and
+  // the exact disclosure BEFORE the issuer, so on a disclosure rejection the
+  // trust check never ran and must not be drawn as passed.
   'disclosure',
+  'trust',
   'decision',
 ];
 
