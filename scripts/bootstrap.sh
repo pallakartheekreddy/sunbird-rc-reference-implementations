@@ -637,11 +637,18 @@ fi
 
 # oid4vc-service reads VERIFIER_DID/ISSUER_DID and the verifier reads
 # AGE_ISSUER_DID at boot, so both need recreating now that .env has them.
-"${COMPOSE[@]}" up -d --force-recreate --no-deps \
-  oid4vc-service oid4vc-farmer oid4vc-land oid4vc-bank \
-  oid4vc-school oid4vc-college oid4vc-university \
-  oid4vc-university-vp oid4vc-employer-vp \
-  verifier age-issuer >/dev/null 2>&1 \
+#
+# RECREATE_SERVICES narrows this for a stack started with only some use cases
+# (an Age-only deployment on a shared host: `docker compose up -d nginx`).
+# Compose starts an explicitly named service even when nothing depends on it,
+# so recreating the full list there would bring up eight unused instances.
+#   RECREATE_SERVICES="oid4vc-service verifier age-issuer" scripts/bootstrap.sh
+# shellcheck disable=SC2206  # word-splitting the list is the point
+RECREATE=(${RECREATE_SERVICES:-oid4vc-service oid4vc-farmer oid4vc-land oid4vc-bank
+  oid4vc-school oid4vc-college oid4vc-university
+  oid4vc-university-vp oid4vc-employer-vp
+  verifier age-issuer})
+"${COMPOSE[@]}" up -d --force-recreate --no-deps "${RECREATE[@]}" >/dev/null 2>&1 \
   || die "could not recreate the issuer and verifier services"
 wait_for "oid4vc-service (restarted)" "$BASE/health"
 wait_for "verifier"                   "$BASE/verifier-health"
