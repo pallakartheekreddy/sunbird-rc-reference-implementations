@@ -45,45 +45,44 @@ test('the credential request asks for one claim and pins the credential type', (
 });
 
 test('every supported threshold maps to its own claim', () => {
-  assert.deepEqual(SUPPORTED_THRESHOLDS, [13, 16, 18, 21]);
-  assert.equal(ageClaim(13), 'ageOver13');
-  assert.equal(ageClaim(21), 'ageOver21');
+  assert.deepEqual(SUPPORTED_THRESHOLDS, [16, 18]);
+  assert.equal(ageClaim(16), 'ageOver16');
+  assert.equal(ageClaim(18), 'ageOver18');
   assert.equal(DEFAULT_THRESHOLD, 18);
 });
 
 test('an unsupported threshold is rejected, never rounded to a supported one', () => {
-  for (const value of [17, 0, -18, 18.5, '18', null, NaN]) {
+  for (const value of [13, 17, 21, 0, -18, 18.5, '18', null, NaN]) {
     assert.throws(() => ageClaim(value), /unsupported age threshold/, `should reject ${String(value)}`);
   }
 });
 
 test('the request asks for the threshold\'s claim only', () => {
-  const request = ageCredentialRequest({ vct: 'v', threshold: 13 });
-  assert.deepEqual(request.claims, ['ageOver13']);
+  const request = ageCredentialRequest({ vct: 'v', threshold: 16 });
+  assert.deepEqual(request.claims, ['ageOver16']);
 });
 
 test('the decision reads the requested threshold, not ageOver18', () => {
-  assert.equal(decideAge({ ageOver21: true }, 21).decision, 'APPROVED');
-  const denied = decideAge({ ageOver21: false }, 21);
-  assert.equal(denied.decision, 'DENIED');
-  assert.match(denied.reason, /not over 21/);
   assert.equal(decideAge({ ageOver16: true }, 16).decision, 'APPROVED');
+  const denied = decideAge({ ageOver16: false }, 16);
+  assert.equal(denied.decision, 'DENIED');
+  assert.match(denied.reason, /not over 16/);
 });
 
-test('a 21+ check answered with only ageOver18 is refused, not approved', () => {
+test('an 18+ check answered with only ageOver16 is refused, not approved', () => {
   // DCQL already stops a wallet answering with the wrong claim; this is the backstop.
-  assert.throws(() => decideAge({ ageOver18: true }, 21), /ageOver21 is not a boolean/);
+  assert.throws(() => decideAge({ ageOver16: true }, 18), /ageOver18 is not a boolean/);
 });
 
 test('parseThreshold: absent means the default, digits mean that threshold', () => {
   assert.equal(parseThreshold(null), 18);
   assert.equal(parseThreshold(''), 18);
-  assert.equal(parseThreshold('21'), 21);
-  assert.equal(parseThreshold('13'), 13);
+  assert.equal(parseThreshold('16'), 16);
+  assert.equal(parseThreshold('18'), 18);
 });
 
 test('parseThreshold: anything else is rejected with a code the server maps to 400', () => {
-  for (const raw of ['17', '18.0', ' 18', '0x12', 'eighteen', '-18', '1e1']) {
+  for (const raw of ['13', '17', '21', '18.0', ' 18', '0x12', 'eighteen', '-18', '1e1']) {
     assert.throws(() => parseThreshold(raw), (err) => err.code === 'UNSUPPORTED_THRESHOLD', raw);
   }
 });

@@ -135,7 +135,7 @@ seed AGE-000005 \
   '{"citizenId":"AGE-000005","name":"Leela Menon","dateOfBirth":"1996-02-29","gender":"Female","district":"Thrissur","state":"Kerala"}' \
   'AGE-000005 Leela Menon — leap-day date of birth, expects APPROVED'
 
-# One citizen inside each band the 13/16/18/21 thresholds create that the
+# One citizen inside each band the 16/18 thresholds create that the
 # records above do not already cover. Dates of birth are relative to today, and a
 # record is only rewritten once its holder has aged out of the band, so a rerun
 # normally changes nothing.
@@ -172,9 +172,8 @@ print(t.year - b.year - ((t.month, t.day) < (b.month, b.day)))
   fi
 }
 
-seed_aged AGE-000006 12 'Alex Moreau' 'Male'   'aged 12: under every threshold, expects DENIED at 13+'
-seed_aged AGE-000007 17 'Dana Okafor' 'Female' 'aged 17: APPROVED at 13+ and 16+, DENIED at 18+'
-seed_aged AGE-000008 19 'Sam Lindqvist' 'Male' 'aged 19: APPROVED at 18+, DENIED at 21+'
+seed_aged AGE-000006 15 'Alex Moreau' 'Male'   'aged 15: under both thresholds, expects DENIED at 16+'
+seed_aged AGE-000007 17 'Dana Okafor' 'Female' 'aged 17: APPROVED at 16+, DENIED at 18+'
 
 TOTAL="$(curl -fsS -X POST "$REG/AgeCitizen/search" -H 'content-type: application/json' -d '{"filters":{}}' \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d if isinstance(d,list) else d.get("data",[])))')"

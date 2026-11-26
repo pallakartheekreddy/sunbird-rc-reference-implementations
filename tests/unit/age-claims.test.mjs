@@ -53,7 +53,7 @@ test('deriveAgeClaims asserts both thresholds, as booleans', () => {
     new Date('2026-08-24T00:00:00Z'),
   );
   assert.equal(claims.ageOver18, true);
-  assert.equal(claims.ageOver21, true);
+  assert.equal(claims.ageOver16, true);
   assert.equal(typeof claims.ageOver18, 'boolean', 'a string "true" would be truthy everywhere');
   // Carried so the holder has something to withhold: the credential is what
   // makes selective disclosure demonstrable rather than asserted.
@@ -73,10 +73,10 @@ test('deriveAgeClaims: a minor gets ageOver18 present and false, never missing',
   assert.equal('ageOver18' in claims, true);
 });
 
-test('deriveAgeClaims: over 18 but under 21', () => {
-  const claims = deriveAgeClaims({ citizenId: 'X', dateOfBirth: '2008-01-01' }, new Date('2026-08-24T00:00:00Z'));
-  assert.equal(claims.ageOver18, true);
-  assert.equal(claims.ageOver21, false);
+test('deriveAgeClaims: over 16 but under 18', () => {
+  const claims = deriveAgeClaims({ citizenId: 'X', dateOfBirth: '2009-01-01' }, new Date('2026-08-24T00:00:00Z'));
+  assert.equal(claims.ageOver16, true);
+  assert.equal(claims.ageOver18, false);
 });
 
 test('deriveAgeClaims refuses to invent an assertion without authoritative data', () => {
@@ -94,12 +94,10 @@ test('deriveAgeClaims rejects a future date of birth', () => {
   );
 });
 
-test('deriveAgeClaims asserts every published threshold: 13, 16, 18 and 21', () => {
-  assert.deepEqual(AGE_THRESHOLDS, [13, 16, 18, 21]);
-  // Aged 14 on the frozen date: over 13 only.
-  const claims = deriveAgeClaims({ citizenId: 'X', dateOfBirth: '2012-01-01' }, new Date('2026-08-24T00:00:00Z'));
-  assert.deepEqual(
-    [claims.ageOver13, claims.ageOver16, claims.ageOver18, claims.ageOver21],
-    [true, false, false, false],
-  );
+test('deriveAgeClaims asserts exactly the published thresholds: 16 and 18', () => {
+  assert.deepEqual(AGE_THRESHOLDS, [16, 18]);
+  // Aged 15 on the frozen date: under both.
+  const claims = deriveAgeClaims({ citizenId: 'X', dateOfBirth: '2011-01-01' }, new Date('2026-08-24T00:00:00Z'));
+  assert.deepEqual([claims.ageOver16, claims.ageOver18], [false, false]);
+  assert.deepEqual(Object.keys(claims).filter((k) => k.startsWith('ageOver')).sort(), ['ageOver16', 'ageOver18']);
 });

@@ -59,7 +59,7 @@ async function runCase({ label, citizenId, expect, mutate = {}, issuer }) {
       base,
       issuerDid: untrustedIssuerDid,
       credentialName: 'Age Verification Credential (unlisted issuer)',
-      claims: { ageOver18: true, ageOver21: true, name: 'Impostor', dateOfBirth: '1990-01-01' },
+      claims: { ageOver18: true, ageOver16: true, name: 'Impostor', dateOfBirth: '1990-01-01' },
     });
     step(1, `an UNLISTED issuer creates an offer (${untrustedIssuerDid})`);
   } else {
@@ -85,7 +85,7 @@ async function runCase({ label, citizenId, expect, mutate = {}, issuer }) {
       ? (ds) => ds.map((d) => (d.name === 'ageOver18' ? forgeDisclosureValue(d, true) : d))
       : undefined,
   });
-  step(5, `holder consents, discloses: ${disclosedClaimNames(presentation).join(', ')} (withheld: name, dateOfBirth, ageOver13, ageOver16, ageOver21)`);
+  step(5, `holder consents, discloses: ${disclosedClaimNames(presentation).join(', ')} (withheld: name, dateOfBirth, ageOver16)`);
 
   const submitted = await submitPresentation({
     base,

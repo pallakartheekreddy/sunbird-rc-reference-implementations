@@ -38,9 +38,9 @@ const NAMES = {
 // The Age build's threshold is fixed at build time too: a real age-restricted
 // service has one legal minimum, not a menu. Must be one the verifier supports.
 const AGE_THRESHOLD = Number(process.env.VERIFIER_AGE_THRESHOLD ?? 18);
-if (![13, 16, 18, 21].includes(AGE_THRESHOLD)) {
+if (![16, 18].includes(AGE_THRESHOLD)) {
   throw new Error(
-    `VERIFIER_AGE_THRESHOLD must be one of 13, 16, 18, 21, got '${process.env.VERIFIER_AGE_THRESHOLD}'`,
+    `VERIFIER_AGE_THRESHOLD must be one of 16, 18, got '${process.env.VERIFIER_AGE_THRESHOLD}'`,
   );
 }
 if (!NAMES[USE_CASE]) {

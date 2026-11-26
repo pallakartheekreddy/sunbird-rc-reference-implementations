@@ -167,10 +167,8 @@ export const NEGATIVE_FIXTURE = {
   schemaId: 'AgeVerificationCredentialUnlisted',
   vctSlug: 'age-verification-credential',
   properties: {
-    ageOver13: { type: 'boolean' },
     ageOver16: { type: 'boolean' },
     ageOver18: { type: 'boolean' },
-    ageOver21: { type: 'boolean' },
     name: { type: 'string' },
     dateOfBirth: { type: 'string', format: 'date' },
   },

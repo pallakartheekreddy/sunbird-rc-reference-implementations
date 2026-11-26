@@ -161,7 +161,7 @@ describe('issuer-side backend', () => {
     const offer = await issueOfferFor(base, MINOR);
     const serialised = JSON.stringify(offer);
     assert.equal(/Arjun|2012-08-30/.test(serialised), false, 'no identity values in the offer response');
-    assert.deepEqual(offer.claimNames, ['ageOver13', 'ageOver16', 'ageOver18', 'ageOver21', 'dateOfBirth', 'name']);
+    assert.deepEqual(offer.claimNames, ['ageOver16', 'ageOver18', 'dateOfBirth', 'name']);
   });
 
   test('an unknown citizen is refused', async () => {
@@ -214,7 +214,7 @@ describe('privacy and minimum disclosure', () => {
 
     // The credential genuinely carries the identity claims. Without this, a
     // "nothing leaked" result would only prove the credential was empty.
-    assert.deepEqual(disclosableClaims(credential), ['ageOver13', 'ageOver16', 'ageOver18', 'ageOver21', 'dateOfBirth', 'name']);
+    assert.deepEqual(disclosableClaims(credential), ['ageOver16', 'ageOver18', 'dateOfBirth', 'name']);
 
     const { presentation, result } = await present({ credential, holder });
     assert.equal(result.decision, 'APPROVED');
@@ -273,7 +273,7 @@ describe('privacy and minimum disclosure', () => {
     const { result, submission } = await present({
       credential,
       holder,
-      disclose: ['ageOver18', 'ageOver21', 'name', 'dateOfBirth'],
+      disclose: ['ageOver18', 'ageOver16', 'name', 'dateOfBirth'],
     });
     assert.equal(submission.status, 403, 'the stack must refuse the presentation outright');
     assert.equal(result.state, 'rejected');
@@ -419,7 +419,7 @@ describe('negative flows', () => {
       base,
       issuerDid: untrustedIssuerDid,
       credentialName: 'Age Verification Credential (unlisted issuer)',
-      claims: { ageOver18: true, ageOver21: true, name: 'Impostor', dateOfBirth: '1990-01-01' },
+      claims: { ageOver18: true, ageOver16: true, name: 'Impostor', dateOfBirth: '1990-01-01' },
     });
     const { credential } = await collectCredential({ base, offer, holder });
     assert.equal(parseSdJwt(credential).payload.iss, untrustedIssuerDid);

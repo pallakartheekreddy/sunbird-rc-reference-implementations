@@ -63,11 +63,11 @@ export function parseCalendarDate(value) {
 }
 
 /**
- * Thresholds asserted in every AgeVerificationCredential: the common minimum
- * ages for online services (13, 16), adulthood (18) and regulated goods (21).
+ * Thresholds asserted in every AgeVerificationCredential: the minimum age for
+ * online services (16) and adulthood (18).
  * Must match the verifier's SUPPORTED_THRESHOLDS and the published schema.
  */
-export const AGE_THRESHOLDS = [13, 16, 18, 21];
+export const AGE_THRESHOLDS = [16, 18];
 
 /**
  * Builds the credential claims for one registry record.
@@ -79,7 +79,7 @@ export const AGE_THRESHOLDS = [13, 16, 18, 21];
  *
  * @param {{citizenId?:string, name?:string, dateOfBirth?:string}} record
  * @param {Date} [now]
- * @returns {{ageOver13:boolean, ageOver16:boolean, ageOver18:boolean, ageOver21:boolean, name:string, dateOfBirth:string}}
+ * @returns {{ageOver16:boolean, ageOver18:boolean, name:string, dateOfBirth:string}}
  */
 export function deriveAgeClaims(record, now = new Date()) {
   if (!record || typeof record !== 'object') throw new Error('no registry record');

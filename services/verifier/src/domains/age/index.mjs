@@ -12,7 +12,7 @@
  * AGE_THRESHOLDS: asking for a threshold the credential does not carry would
  * fail every presentation at the DCQL step.
  */
-export const SUPPORTED_THRESHOLDS = [13, 16, 18, 21];
+export const SUPPORTED_THRESHOLDS = [16, 18];
 
 /** What a caller that names no threshold gets: the original Age behaviour. */
 export const DEFAULT_THRESHOLD = 18;

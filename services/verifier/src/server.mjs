@@ -317,7 +317,7 @@ const agricultureRequestedClaims = () => {
 const USE_CASES = {
   age: {
     signer: 'age',
-    // The threshold is chosen per session (POST /age/sessions?threshold=21) and
+    // The threshold is chosen per session (POST /age/sessions?threshold=16) and
     // recorded on it, so the decision reads the rule the request was built for.
     requests: ({ threshold = DEFAULT_THRESHOLD } = {}) => [ageCredentialRequest({ vct: AGE_VCT, threshold })],
     describe: ({ threshold = DEFAULT_THRESHOLD } = {}) => `requesting ${ageClaim(threshold)} only`,
