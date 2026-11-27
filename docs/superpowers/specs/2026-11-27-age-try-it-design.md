@@ -95,11 +95,12 @@ One public page, `/try/` (same visual language as `/verifier/`: two columns, a l
   (marked "advanced: Android APK", linking MOSIP's end-user guide on docs.inji.io, which
   is where the collab build `io.mosip.inji.collab` 1.0.0-alpha.1 that passed on 26 Nov came
   from). The choice sets the credential format: Paradym → SD-JWT; Inji → `ldp_vc`.
-- **No Brazil SDK app option** *(builder's call, 27 Nov)*. The SDK app collects
-  credentials only by signing in through Keycloak; it has no credential-offer handling, a
-  `TRY-` citizen has no Keycloak account, and its APK is built locally with a localhost
-  redirect. It is an embedded-wallet scenario for integrators, shown in the video and the
-  wallet-integration guide, not a public self-serve wallet.
+- **No Brazil SDK app option for now** *(Kartheek, 27 Nov)*. The SDK app collects
+  credentials only by signing in through Keycloak (no credential-offer handling), and a
+  `TRY-` citizen has no Keycloak account. **Later option (preferred, agreed shape):** give
+  each test citizen a temporary Keycloak login linked by the `citizenId` attribute, created
+  and deleted with the citizen, plus a public APK download under `/try/downloads/`. No app
+  changes needed. Not part of this work.
 - **On a phone:** "Open in wallet" deep link instead of (and as well as) the QR, same as
   the verifier page today.
 - **The two sites** are small branded pages (`/try/social/`, `/try/shop/`) that look like
