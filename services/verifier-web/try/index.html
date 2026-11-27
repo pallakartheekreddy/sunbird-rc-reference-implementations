@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Try age verification</title>
+    <link rel="stylesheet" href="/verifier/age.css" />
+    <link rel="stylesheet" href="/try/try.css" />
+    <script type="module" src="/try/try.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="service-name" data-i18n="try.title">Try age verification</span>
+        <span class="tag" data-i18n="demo">Demo</span>
+      </div>
+      <div class="segmented small" id="lang" role="group" aria-label="Language"></div>
+    </header>
+
+    <main class="try-layout">
+      <section class="card">
+        <p class="lede" data-i18n="try.lede"></p>
+        <p class="notice" data-i18n="try.demoOnly"></p>
+
+        <div class="step-head">
+          <h2><span class="step-no">1</span><span data-i18n="try.step1"></span></h2>
+          <button type="button" class="button ghost" id="new-citizen">⟳ <span data-i18n="try.newCitizen"></span></button>
+        </div>
+        <p class="hint" data-i18n="try.registryNote"></p>
+        <form id="citizen-form" class="controls" novalidate>
+          <div class="grid2">
+            <label class="field"><span class="field-label" data-i18n="try.name"></span>
+              <input class="input" id="name" name="name" maxlength="60" autocomplete="off" required /></label>
+            <label class="field"><span class="field-label" data-i18n="try.dob"></span>
+              <input class="input" id="dob" name="dob" type="date" min="1900-01-01" required /></label>
+          </div>
+          <div class="preview" id="preview"></div>
+          <fieldset class="field" style="border:0;padding:0;margin:0">
+            <legend class="field-label" data-i18n="try.wallet"></legend>
+            <label class="radio"><input type="radio" name="wallet" value="paradym" checked />
+              <span><span data-i18n="try.wallet.paradym"></span>
+                <small><span data-i18n="try.paradymHint"></span>
+                  <a href="https://apps.apple.com/app/paradym-wallet/id6449846111" target="_blank" rel="noopener">App Store</a> ·
+                  <a href="https://play.google.com/store/apps/details?id=id.paradym.wallet" target="_blank" rel="noopener">Google Play</a></small></span></label>
+            <label class="radio"><input type="radio" name="wallet" value="inji" />
+              <span><span data-i18n="try.wallet.inji"></span>
+                <small><a href="https://docs.inji.io/inji-wallet/inji-mobile/functional-overview/end-user-guide" target="_blank" rel="noopener" data-i18n="try.injiHint"></a></small></span></label>
+          </fieldset>
+          <button class="button primary" id="get" type="submit" data-i18n="try.get"></button>
+          <p class="error" id="error" role="alert" hidden></p>
+        </form>
+
+        <div class="step-head"><h2><span class="step-no">2</span><span data-i18n="try.step2"></span></h2></div>
+        <div class="sites">
+          <a class="button" id="go-social" href="/try/social/" data-i18n="try.site.social"></a>
+          <a class="button" id="go-shop" href="/try/shop/" data-i18n="try.site.shop"></a>
+        </div>
+      </section>
+
+      <section class="card live" aria-live="polite">
+        <p class="label" data-i18n="try.live"></p>
+        <div id="live-idle">
+          <h2 data-i18n="try.ready"></h2>
+          <p class="lede" data-i18n="try.readyLede"></p>
+        </div>
+        <div id="live-offer" hidden>
+          <h2 id="live-name"></h2>
+          <p class="lede" data-i18n="try.scanOffer"></p>
+          <div class="offer-qr"><img id="offer-qr" alt="" /></div>
+          <div class="row">
+            <a class="button primary" id="offer-open" data-i18n="openWallet"></a>
+            <a class="button" id="offer-continue" href="#step2" data-i18n="try.continue"></a>
+          </div>
+          <p class="hint" id="offer-expires"></p>
+        </div>
+      </section>
+
+      <section class="card recent">
+        <h2 class="block-title" data-i18n="try.recent"></h2>
+        <p class="hint" data-i18n="try.recentNote"></p>
+        <table>
+          <thead><tr>
+            <th data-i18n="try.col.time"></th><th data-i18n="try.col.site"></th><th data-i18n="try.col.asked"></th>
+            <th data-i18n="try.col.wallet"></th><th data-i18n="try.col.result"></th><th data-i18n="try.col.checks"></th>
+          </tr></thead>
+          <tbody id="recent-rows"></tbody>
+        </table>
+        <p class="hint" id="recent-empty" data-i18n="try.recentEmpty"></p>
+      </section>
+    </main>
+  </body>
+</html>

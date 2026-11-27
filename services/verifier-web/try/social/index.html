@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>SocialApp</title>
+    <link rel="stylesheet" href="/verifier/age.css" />
+    <link rel="stylesheet" href="/try/try.css" />
+    <script type="module" src="/try/site-page.js"></script>
+  </head>
+  <body class="site-social" data-site="social">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="service-name">SocialApp</span>
+        <span class="tag" data-i18n="demo">Demo</span>
+      </div>
+      <div class="segmented small" id="lang" role="group" aria-label="Language"></div>
+    </header>
+    <main class="site">
+      <section class="card">
+        <div class="product">
+          <div class="product-art" aria-hidden="true">💬</div>
+          <div>
+            <p class="big" data-i18n="site.social.tagline"></p>
+            <p class="hint" data-i18n="site.social.rule"></p>
+          </div>
+        </div>
+        <div class="controls">
+          <button class="button primary" id="verify" data-i18n="site.verify"></button>
+        </div>
+
+        <div class="present" id="present" hidden>
+          <div id="qr" class="qr"></div>
+          <div class="present-actions">
+            <p class="status-line"><span class="pill waiting"><span class="dot" aria-hidden="true"></span><span data-i18n="waiting"></span></span></p>
+            <p class="hint" data-i18n="site.scan"></p>
+            <a id="open-wallet" class="button primary" data-i18n="openWallet"></a>
+          </div>
+        </div>
+
+        <div class="result" id="result" hidden aria-live="polite">
+          <div class="verdict" id="verdict"><div><p class="verdict-title" id="verdict-title"></p></div></div>
+          <div id="learned" hidden>
+            <p class="block-title" data-i18n="site.learned"></p>
+            <p class="hint" id="learned-lede"></p>
+            <div class="kv"><span class="kv-key" data-i18n="ask.requested"></span><div class="chips" id="requested"></div></div>
+            <div class="kv"><span class="kv-key" data-i18n="ask.notAsked"></span><div class="chips" id="not-asked"></div></div>
+            <ul class="steps" id="steps"></ul>
+          </div>
+          <button class="button" id="again" data-i18n="site.again"></button>
+        </div>
+      </section>
+      <a class="button ghost" id="back" href="/try/" data-i18n="site.back"></a>
+    </main>
+  </body>
+</html>
