@@ -21,6 +21,7 @@ import { deriveAgeClaims, ageClaimsValidUntil } from './age-claims.mjs';
 import { registryClient } from './registry.mjs';
 import { oid4vcClient } from './oid4vc.mjs';
 import { offerFormat, claimsForSchema } from './formats.mjs';
+import { createTryHandler, cleanupTryCitizens } from './try-citizens.mjs';
 
 const PORT = Number(process.env.PORT || 4200);
 const CREDENTIAL_NAME = process.env.CREDENTIAL_NAME || 'Age Verification Credential';
@@ -40,7 +41,7 @@ const oid4vc = oid4vcClient({
  */
 const summarise = (claims) => Object.keys(claims).sort().join(',');
 
-async function issueOffer(citizenId, format = CREDENTIAL_FORMAT) {
+async function issueOffer(citizenId, format = CREDENTIAL_FORMAT, { expirationDate: expirationOverride } = {}) {
   const record = await registry.findCitizen(citizenId);
   if (!record) {
     return { status: 404, body: { error: 'unknown_citizen', citizenId } };
@@ -61,8 +62,9 @@ async function issueOffer(citizenId, format = CREDENTIAL_FORMAT) {
   const claims = claimsForSchema(derived, config.claimNames);
 
   // The answers change on a birthday (a minor's "not over 18"); the credential
-  // expires that day. Adults get no expiry.
-  const expirationDate = ageClaimsValidUntil(record.dateOfBirth);
+  // expires that day. Adults get no expiry. A /try/ test citizen passes its own,
+  // shorter expiry (see try-citizens.mjs), which already accounts for the birthday.
+  const expirationDate = expirationOverride || ageClaimsValidUntil(record.dateOfBirth);
 
   const offer = await oid4vc.createOffer({
     configurationId: config.configurationId,
@@ -95,6 +97,8 @@ async function issueOffer(citizenId, format = CREDENTIAL_FORMAT) {
   };
 }
 
+const handleTry = createTryHandler({ registry, issueOffer });
+
 const routes = {
   'GET /healthz': async () => ({ status: 200, body: { status: 'UP', service: 'age-issuer' } }),
 
@@ -120,7 +124,32 @@ const routes = {
     // Optional: 'ldp_vc' for Inji-based wallets; defaults to CREDENTIAL_FORMAT.
     return issueOffer(citizenId, offerFormat(body?.format, CREDENTIAL_FORMAT));
   },
+
+  // PUBLIC (via nginx, rate-limited): anyone can create a test citizen. An
+  // unexpected failure answers a fixed error, never the upstream message, which
+  // can name internal hosts or echo registry payloads to a stranger.
+  'POST /try/citizens': async (body) => {
+    try {
+      return await handleTry(body);
+    } catch (err) {
+      console.error(`[age-issuer] /try/citizens failed: ${err.message}`);
+      return { status: 502, body: { error: 'issuance_failed' } };
+    }
+  },
 };
+
+// Test citizens are deleted 24 h after creation. Every 15 minutes, and once
+// shortly after start so a restart does not postpone cleanup by a full period.
+const runCleanup = () =>
+  cleanupTryCitizens({ registry })
+    .then((n) => n && console.log(`[age-issuer] deleted ${n} expired test citizen(s)`))
+    .catch((err) => console.error(`[age-issuer] test-citizen cleanup failed: ${err.message}`));
+setTimeout(runCleanup, 30_000).unref();
+setInterval(runCleanup, 15 * 60_000).unref();
+
+// The public /try/ endpoint takes a few hundred bytes; anything larger is not a
+// legitimate request and is refused before it is buffered.
+const MAX_BODY_BYTES = 16 * 1024;
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
@@ -139,9 +168,18 @@ const server = createServer(async (req, res) => {
     let body;
     if (req.method === 'POST') {
       const chunks = [];
-      for await (const chunk of req) chunks.push(chunk);
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > MAX_BODY_BYTES) return send(413, { error: 'body_too_large' });
+        chunks.push(chunk);
+      }
       const raw = Buffer.concat(chunks).toString('utf8');
-      body = raw ? JSON.parse(raw) : {};
+      try {
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        return send(400, { error: 'invalid_json' });
+      }
     }
     const result = await handler(body);
     send(result.status, result.body);

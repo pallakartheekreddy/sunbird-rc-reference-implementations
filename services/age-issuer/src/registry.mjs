@@ -62,6 +62,25 @@ export function registryClient(baseUrl) {
       return call('/api/v1/AgeCitizen', { method: 'POST', body: JSON.stringify(record) });
     },
 
+    /** Test citizens created by /try/ (ids starting TRY-), as {osid, citizenId}. */
+    async listTryCitizens() {
+      const results = await call('/api/v1/AgeCitizen/search', {
+        method: 'POST',
+        body: JSON.stringify({ filters: { citizenId: { startsWith: 'TRY-' } } }),
+      });
+      const list = Array.isArray(results) ? results : results?.data || [];
+      return list.map(({ osid, citizenId }) => ({ osid, citizenId }));
+    },
+
+    async countTryCitizens() {
+      return (await this.listTryCitizens()).length;
+    },
+
+    /** @param {string} osid */
+    async deleteCitizen(osid) {
+      return call(`/api/v1/AgeCitizen/${encodeURIComponent(osid)}`, { method: 'DELETE' });
+    },
+
     async health() {
       return call('/health', { method: 'GET' });
     },
