@@ -21,6 +21,7 @@ import { resolveTrustPolicy, issuersFor } from './core/trust.mjs';
 import { credentialStatusChecker } from './core/credential-status.mjs';
 import { assertExactClaims } from './core/claim-policy.mjs';
 import { sessionStore } from './core/sessions.mjs';
+import { recentChecks, SITES } from './core/recent.mjs';
 import {
   ageCredentialRequest,
   ageClaim,
@@ -179,6 +180,8 @@ const signers = {
 // has, and the readiness probe must not start failing on an optional service.
 const oid4vc = signers.age;
 const sessions = sessionStore({ ttlSeconds: SESSION_TTL_SECONDS });
+// The anonymous list /try/ shows. In memory and bounded; see core/recent.mjs.
+const recent = recentChecks();
 
 // Resolved once, at boot, before the listener opens — see the bottom of this
 // file. Deliberately allowed to throw: a verifier that cannot tell which issuers
@@ -508,6 +511,9 @@ async function createSession(useCaseName = 'age', options = {}) {
     signer: useCase.signer,
     // Undefined for every use case but Age, which reads it in decide/respond.
     threshold: options.threshold,
+    // Which demo site asked (/try/ social or shop, or the verifier page), for the
+    // anonymous recent-checks list. Age only.
+    site: options.site,
     // Which query check the result must carry, and whether its claims need
     // mapping from the PEX shape before the shared checks run.
     queryMode,
@@ -771,6 +777,9 @@ const server = createServer(async (req, res) => {
     // it will give, so a demo can prove the request is minimal and the rule fixed
     // rather than taking a page's word for it. `/policy` without a prefix stays
     // the Age one: it is a published surface Iteration 01 was accepted on.
+    if (req.method === 'GET' && (path === '/recent' || path === '/age/recent')) {
+      return send(200, { checks: recent.list() });
+    }
     if (req.method === 'GET' && (path === '/policy' || path === '/age/policy')) {
       return send(200, USE_CASES.age.policy());
     }
@@ -791,7 +800,11 @@ const server = createServer(async (req, res) => {
       if (!WALLET_QUERY[wallet]) {
         return send(400, { error: 'unsupported_wallet', supported: Object.keys(WALLET_QUERY) });
       }
-      const result = await createSession('age', { threshold, wallet });
+      const site = url.searchParams.get('site') || 'verifier';
+      if (!SITES.includes(site)) {
+        return send(400, { error: 'unsupported_site', supported: SITES });
+      }
+      const result = await createSession('age', { threshold, wallet, site });
       return send(result.status, result.body);
     }
     if (req.method === 'POST' && path.endsWith('/sessions')) {
@@ -811,7 +824,9 @@ const server = createServer(async (req, res) => {
     }
     const match = READ_PATH.exec(path);
     if (req.method === 'GET' && match) {
+      const session = sessions.get(match[1]);
       const result = await readSession(match[1]);
+      if (session?.useCase === 'age') recent.record(match[1], session, result.body);
       return send(result.status, result.body);
     }
     return send(404, { error: 'not_found' });
