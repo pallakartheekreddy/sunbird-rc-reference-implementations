@@ -26,6 +26,7 @@ function render() {
     allowed: `site.${site}.allowed`,
     refused: `site.${site}.refused`,
     declined: 'site.declined',
+    cancelled: 'site.cancelled',
     expired: 'site.expired',
     failed: 'site.failed',
   }[outcome];
@@ -103,6 +104,13 @@ function finish(o, body) {
 }
 
 el('verify').addEventListener('click', start);
+el('cancel').addEventListener('click', async () => {
+  const id = current;
+  if (!id) return;
+  current = null; // stops the poll loop
+  await request(fetch, `/api/verifier/sessions/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+  finish('cancelled', null);
+});
 el('again').addEventListener('click', () => {
   current = null;
   outcome = null;

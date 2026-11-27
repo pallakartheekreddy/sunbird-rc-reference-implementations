@@ -819,6 +819,8 @@ const server = createServer(async (req, res) => {
       const id = cancelMatch[1];
       if (!sessions.get(id)) return send(404, { state: 'expired' });
       abandoned.add(id);
+      const cancelled = sessions.get(id);
+      if (cancelled?.useCase === 'age') recent.record(id, cancelled, { state: 'cancelled' });
       console.log(`[verifier] session ${id} cancelled by the verifier; no decision will be reported`);
       return send(200, { state: 'cancelled' });
     }

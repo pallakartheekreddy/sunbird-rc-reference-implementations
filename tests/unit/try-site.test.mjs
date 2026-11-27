@@ -29,3 +29,7 @@ test('site links follow the wallet the credential was issued to, not the radio b
   assert.equal(siteLink('shop', { issuedWallet: 'paradym', chosenWallet: 'inji', lang: 'pt' }), '/try/shop/?wallet=paradym&lang=pt');
   assert.equal(siteLink('social', { chosenWallet: 'inji', lang: 'en' }), '/try/social/?wallet=inji&lang=en');
 });
+
+test('a check the visitor cancelled says so, not "declined"', () => {
+  assert.equal(siteOutcome(200, { state: 'cancelled' }), 'cancelled');
+});

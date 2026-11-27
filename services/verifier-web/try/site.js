@@ -5,7 +5,7 @@ export const SITE_THRESHOLDS = { social: 16, shop: 18 };
 
 /**
  * The visitor-facing outcome of a verifier session poll.
- * @returns {'allowed'|'refused'|'declined'|'expired'|'failed'|'waiting'}
+ * @returns {'allowed'|'refused'|'declined'|'cancelled'|'expired'|'failed'|'waiting'}
  */
 export function siteOutcome(httpStatus, body) {
   if (httpStatus === 404) return 'expired';
@@ -14,8 +14,11 @@ export function siteOutcome(httpStatus, body) {
     case 'waiting':
       return 'waiting';
     case 'declined':
-    case 'cancelled':
       return 'declined';
+    // The visitor pressed Cancel: needed because Paradym sends nothing when the
+    // holder declines, so without it the page would wait out the session.
+    case 'cancelled':
+      return 'cancelled';
     case 'decided':
       return body.decision === 'APPROVED' ? 'allowed' : 'refused';
     case 'expired':
