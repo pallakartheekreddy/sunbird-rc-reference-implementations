@@ -1,6 +1,6 @@
 # "Try it yourself": self-serve age verification demo — design
 
-**Date:** 27 Nov 2026 · **Branch:** `feat/age-inji-pex` · **Status:** reviewed, awaiting approval
+**Date:** 27 Nov 2026 · **Branch:** `feat/age-inji-pex` · **Status:** built on dev, 27 Nov 2026 (`/try/`, commits 13cada3..1e4597b)
 
 ## Why
 
