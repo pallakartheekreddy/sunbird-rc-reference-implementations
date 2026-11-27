@@ -120,3 +120,25 @@ test('cleanup deletes only TRY- citizens older than 24 h', async () => {
   assert.equal(n, 1);
   assert.deepEqual(deleted, ['a']);
 });
+
+test('names in scripts with combining marks, and decomposed accents, are accepted', () => {
+  for (const name of ['प्रिया शर्मा', 'Jo\u0061\u0303o Silva', 'தமிழ் செல்வி']) {
+    const res = validateTryRequest({ ...ok, name }, NOW);
+    assert.equal(res.ok, true, name);
+    assert.equal(res.value.name, name.normalize('NFC'));
+  }
+  assert.equal(validateTryRequest({ ...ok, name: '\u0303Ana' }, NOW).field, 'name');
+});
+
+test('cleanup keeps a test citizen for 2 hours only by default', async () => {
+  const deleted = [];
+  const registry = {
+    listTryCitizens: async () => [
+      { osid: 'old', citizenId: newTryCitizenId(new Date(NOW - 2.5 * 3600e3)) },
+      { osid: 'new', citizenId: newTryCitizenId(new Date(NOW - 1.5 * 3600e3)) },
+    ],
+    deleteCitizen: async (osid) => deleted.push(osid),
+  };
+  await cleanupTryCitizens({ now: NOW, registry });
+  assert.deepEqual(deleted, ['old']);
+});

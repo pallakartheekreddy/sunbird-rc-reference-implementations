@@ -31,7 +31,6 @@ test('records a final result once, with no holder data', () => {
       outcome: 'APPROVED',
       checksPassed: 2,
       checksTotal: 3,
-      reason: 'over 18',
     },
   ]);
   assert.equal(JSON.stringify(r.list()).includes('tx1'), false);
@@ -54,4 +53,11 @@ test('keeps the newest 50 and forgets after 24 h', () => {
   assert.equal(r.list()[0].at, new Date(59).toISOString());
   t = 59 + 86_400_001;
   assert.equal(r.list().length, 0);
+});
+
+test('no free-text reason reaches the public list: it can name internal hosts', () => {
+  const r = recentChecks();
+  r.record('tx3', session, { state: 'rejected', reason: 'could not reach the issuing Authority: getaddrinfo ENOTFOUND authority-service', checks: {} });
+  assert.equal(JSON.stringify(r.list()).includes('ENOTFOUND'), false);
+  assert.equal('reason' in r.list()[0], false);
 });

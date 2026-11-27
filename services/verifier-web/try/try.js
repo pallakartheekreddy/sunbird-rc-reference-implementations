@@ -4,7 +4,7 @@
 import { t } from '/verifier/i18n.js';
 import { request } from '/verifier/flow.js';
 import { randomPersona, PERSONA_KINDS, completedYears } from './personas.js';
-import { tryErrorKey } from './site.js';
+import { tryErrorKey, siteLink } from './site.js';
 import { setupLang, el, node, todayUtc } from './common.js';
 
 let kindIndex = 0;
@@ -40,10 +40,9 @@ function renderPreview() {
 }
 
 function renderSiteLinks() {
-  const w = wallet();
-  const l = lang();
-  el('go-social').href = `/try/social/?wallet=${w}&lang=${l}`;
-  el('go-shop').href = `/try/shop/?wallet=${w}&lang=${l}`;
+  const links = { issuedWallet: offer?.wallet, chosenWallet: wallet(), lang: lang() };
+  el('go-social').href = siteLink('social', links);
+  el('go-shop').href = siteLink('shop', links);
 }
 
 function renderOffer() {
@@ -73,15 +72,16 @@ async function getCredential(event) {
   button.textContent = t(lang(), 'try.creating');
   lastError = null;
   const name = el('name').value;
+  const chosen = wallet();
   const { status, body } = await request(fetch, '/api/try/citizens', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name, dateOfBirth: el('dob').value, wallet: wallet() }),
+    body: JSON.stringify({ name, dateOfBirth: el('dob').value, wallet: chosen }),
   });
   button.disabled = false;
   button.textContent = t(lang(), 'try.get');
   if (status === 201 && body?.qrData) {
-    offer = { ...body, name: name.trim() };
+    offer = { ...body, name: name.trim(), wallet: chosen };
   } else {
     offer = null;
     lastError = tryErrorKey(status, body);

@@ -35,7 +35,8 @@ export function recentChecks({ capacity = 50, maxAgeMs = 86_400_000, now = () =>
           outcome: body.state === 'decided' ? body.decision : body.state,
           checksPassed: checks.filter((v) => v === 'OK').length,
           checksTotal: checks.length,
-          reason: body.reason,
+          // No `reason`: it is free text, and a rejection reason can carry an
+          // upstream error naming internal hosts. The outcome says enough.
         },
       });
       seen.add(sessionId);

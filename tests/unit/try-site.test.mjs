@@ -4,7 +4,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { siteOutcome, tryErrorKey, SITE_THRESHOLDS } from '../../services/verifier-web/try/site.js';
+import { siteOutcome, tryErrorKey, SITE_THRESHOLDS, siteLink } from '../../services/verifier-web/try/site.js';
 
 test('thresholds', () => assert.deepEqual(SITE_THRESHOLDS, { social: 16, shop: 18 }));
 
@@ -23,4 +23,9 @@ test('errors from creating a test citizen', () => {
   assert.equal(tryErrorKey(503, { error: 'demo_busy' }), 'try.error.busy');
   assert.equal(tryErrorKey(400, { error: 'invalid_request', field: 'dateOfBirth' }), 'try.error.invalid.dateOfBirth');
   assert.equal(tryErrorKey(500, {}), 'try.error.generic');
+});
+
+test('site links follow the wallet the credential was issued to, not the radio button', () => {
+  assert.equal(siteLink('shop', { issuedWallet: 'paradym', chosenWallet: 'inji', lang: 'pt' }), '/try/shop/?wallet=paradym&lang=pt');
+  assert.equal(siteLink('social', { chosenWallet: 'inji', lang: 'en' }), '/try/social/?wallet=inji&lang=en');
 });

@@ -129,8 +129,9 @@ One public page, `/try/` (same visual language as `/verifier/`: two columns, a l
 Served publicly as `/api/try/citizens` (nginx), unlike `POST /offers`, which stays on the
 operator port.
 
-**Cleanup:** an interval in age-issuer deletes `TRY-` citizens older than 24 h through the
-registry API. Credentials already in wallets stay valid until their 7-day expiry.
+**Cleanup:** an interval in age-issuer deletes `TRY-` citizens older than **2 h** through the
+registry API (changed from 24 h after review: one rate-limited client could otherwise hold
+the 1,000 cap). Credentials already in wallets stay valid until their 7-day expiry.
 
 ### Did the wallet collect it? ("✓ Credential received")
 

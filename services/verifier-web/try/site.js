@@ -34,3 +34,12 @@ export function tryErrorKey(httpStatus, body) {
   }
   return 'try.error.generic';
 }
+
+/**
+ * Link to a demo site. Once a credential has been issued, the site must ask in
+ * that credential's format: switching the wallet radio afterwards would send a
+ * Paradym (SD-JWT) holder a request only an Inji (ldp_vc) credential can answer.
+ */
+export function siteLink(site, { issuedWallet, chosenWallet, lang }) {
+  return `/try/${site}/?wallet=${encodeURIComponent(issuedWallet || chosenWallet)}&lang=${encodeURIComponent(lang)}`;
+}

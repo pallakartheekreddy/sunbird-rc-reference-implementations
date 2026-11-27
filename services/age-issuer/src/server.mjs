@@ -138,7 +138,7 @@ const routes = {
   },
 };
 
-// Test citizens are deleted 24 h after creation. Every 15 minutes, and once
+// Test citizens are deleted 2 h after creation (see try-citizens.mjs). Every 15 minutes, and once
 // shortly after start so a restart does not postpone cleanup by a full period.
 const runCleanup = () =>
   cleanupTryCitizens({ registry })

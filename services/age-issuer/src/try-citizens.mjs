@@ -7,7 +7,7 @@
 //
 //   * it is validated here, field by field, before anything is written;
 //   * every record is marked by its id (TRY-<creation time>-<random>) and
-//     deleted 24 hours later, so the registry does not fill with strangers;
+//     deleted 2 hours later, so the registry does not fill with strangers;
 //   * the credential it yields expires within 7 days, so a demo credential does
 //     not live on in someone's wallet;
 //   * a cap on live test citizens stops one busy afternoon from growing the
@@ -23,9 +23,16 @@ import { parseCalendarDate, deriveAgeClaims, ageClaimsValidUntil } from './age-c
 export const TRY_WALLET_FORMATS = { paradym: 'vc+sd-jwt', inji: 'ldp_vc' };
 
 const TRY_PREFIX = 'TRY-';
-const NAME = /^[\p{L}][\p{L} .'-]{0,59}$/u;
+// Letters plus combining marks: Devanagari vowel signs and decomposed accents
+// (NFD "João", as macOS keyboards can send) are marks, not letters. A name must
+// still START with a letter, and nothing here can carry markup.
+const NAME = /^\p{L}[\p{L}\p{M} .'-]{0,59}$/u;
 const SEVEN_DAYS_MS = 7 * 24 * 3600 * 1000;
-const DAY_MS = 24 * 3600 * 1000;
+// A test citizen is only needed until its offer is redeemed (minutes). Two hours
+// keeps one rate-limited client (5/min → 600 in 2 h) below the 1,000 cap, so a
+// single script cannot keep the demo "busy". The credential in the wallet is
+// unaffected; it carries its own 7-day expiry.
+const RETENTION_MS = 2 * 3600 * 1000;
 
 const utcDay = (d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 
@@ -34,7 +41,7 @@ const utcDay = (d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate
  *         | {ok: false, field: 'name'|'dateOfBirth'|'wallet', error: string}}
  */
 export function validateTryRequest(body, now = new Date()) {
-  const name = typeof body?.name === 'string' ? body.name.trim() : '';
+  const name = typeof body?.name === 'string' ? body.name.normalize('NFC').trim() : '';
   if (!NAME.test(name)) {
     return { ok: false, field: 'name', error: "1–60 characters: letters, spaces and . ' - only" };
   }
@@ -128,12 +135,12 @@ export function createTryHandler({ registry, issueOffer, now = () => new Date(),
 }
 
 /**
- * Deletes TRY- citizens older than maxAgeMs. Keeps going past a failed delete:
+ * Deletes TRY- citizens older than maxAgeMs (2 h by default). Keeps going past a failed delete:
  * one stuck record must not stop the rest from being cleaned up.
  *
  * @returns {Promise<number>} how many were deleted
  */
-export async function cleanupTryCitizens({ registry, now = new Date(), maxAgeMs = DAY_MS }) {
+export async function cleanupTryCitizens({ registry, now = new Date(), maxAgeMs = RETENTION_MS }) {
   const records = await registry.listTryCitizens();
   let deleted = 0;
   for (const { osid, citizenId } of records) {
